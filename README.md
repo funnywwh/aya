@@ -1,4 +1,4 @@
-# 阿雅 (Aya) 编程语言
+# 优雅 (Uya) 编程语言
 
 > 零GC · 默认Rust级安全 · 单页纸可读完 · 通过路径零指令  
 > 无lifetime符号 · 无隐式控制
@@ -7,11 +7,11 @@
 
 ## 简介
 
-阿雅（Aya）是一个系统编程语言，专注于**内存安全**、**并发安全**和**零运行时开销**。设计目标是提供 Rust 级别的安全性，同时保持 C 级别的性能和简洁性。
+优雅（Uya）是一个系统编程语言，专注于**内存安全**、**并发安全**和**零运行时开销**。设计目标是提供 Rust 级别的安全性，同时保持 C 级别的性能和简洁性。
 
 ## 核心特性
 
-### 0.9 版本核心特性
+### 0.11 版本核心特性
 
 - **原子类型**：`atomic T` 关键字，自动原子指令，零运行时锁
 - **内存安全强制**：所有 UB 必须被编译期证明为安全，失败即编译错误
@@ -33,7 +33,7 @@
 
 ### 示例代码
 
-```aya
+```uya
 // 结构体定义
 struct Vec3 {
   x: f32,
@@ -42,7 +42,7 @@ struct Vec3 {
 }
 
 // 函数定义
-fn add(a: i32, b: i32) -> i32 {
+fn add(a: i32, b: i32) i32 {
   return a + b;
 }
 
@@ -61,20 +61,20 @@ struct Counter {
   value: atomic i32
 }
 
-fn increment(counter: *Counter) -> void {
+fn increment(counter: *Counter) void {
   counter.value += 1;  // 自动原子 fetch_add
 }
 
 // 接口
 interface IWriter {
-  fn write(self: *Self, buf: *byte, len: i32) -> i32;
+  fn write(self: *Self, buf: *byte, len: i32) i32;
 }
 
 // FFI 调用
 extern i32 printf(byte* fmt, ...);
 
-fn main() -> i32 {
-  printf("Hello, Aya!\n");
+fn main() i32 {
+  printf("Hello, Uya!\n");
   return 0;
 }
 ```
@@ -96,7 +96,7 @@ fn main() -> i32 {
 |------|---------|-----------|
 | **C/C++** | 程序员负责安全 | 编译器不帮忙，只生成代码 |
 | **Rust** | 编译器通过借用检查器帮忙 | 编译器主动检查所有权和生命周期 |
-| **阿雅** | 程序员必须提供证明，编译器验证证明 | 编译器验证数学证明，失败即编译错误 |
+| **优雅** | 程序员必须提供证明，编译器验证证明 | 编译器验证数学证明，失败即编译错误 |
 
 ### 结果与收益
 
@@ -107,7 +107,7 @@ fn main() -> i32 {
 
 ## 类型系统
 
-| 阿雅类型 | C 对应 | 大小/对齐 | 备注 |
+| 优雅类型 | C 对应 | 大小/对齐 | 备注 |
 |---------|--------|-----------|------|
 | `i8` `i16` `i32` `i64` | 同宽 signed | 1 2 4 8 B | 对齐 = 类型大小 |
 | `f32` `f64` | float/double | 4/8 B | 对齐 = 类型大小 |
@@ -150,12 +150,12 @@ fn main() -> i32 {
 - **数据竞争 = 零**（所有原子操作自动序列化）
 - **零新符号**：无需额外的语法标记
 
-```aya
+```uya
 struct Counter {
   value: atomic i32
 }
 
-fn increment(counter: *Counter) -> void {
+fn increment(counter: *Counter) void {
   counter.value += 1;  // 自动原子 fetch_add
   let v: i32 = counter.value;  // 自动原子 load
   counter.value = 10;  // 自动原子 store
@@ -164,7 +164,7 @@ fn increment(counter: *Counter) -> void {
 
 ## 文档
 
-完整的语言规范请参阅 [aya.md](./aya.md)。
+完整的语言规范请参阅 [uya.md](./uya.md)。
 
 文档包含：
 - 完整的语法规范
@@ -183,7 +183,7 @@ Copyright (c) 2025 zigger
 
 ## 一句话总结
 
-> **阿雅 0.9 = 默认即 Rust 级内存安全 + 并发安全**；  
+> **优雅 0.11 = 默认即 Rust 级内存安全 + 并发安全**；  
 > **只加 1 个关键字 `atomic T`，其余零新符号**；  
 > **所有 UB 必须被编译期证明为安全 → 失败即编译错误**；  
 > **通过路径零指令，失败路径不存在，不降级、不插运行时锁。**
@@ -194,11 +194,11 @@ Copyright (c) 2025 zigger
 
 ## 相关链接
 
-- [语言规范文档](./aya.md)
+- [语言规范文档](./uya.md)
 - [许可证](./LICENSE)
 
 ---
 
-**注意**：阿雅语言目前处于开发阶段（0.9 版本），部分特性可能尚未完全实现。请参考 [aya.md](./aya.md) 了解当前版本的限制和未来计划。
+**注意**：优雅语言目前处于开发阶段（**0.11 版本**），部分特性可能尚未完全实现。请参考 [uya.md](./uya.md) 了解当前版本的限制和未来计划。
 
 
