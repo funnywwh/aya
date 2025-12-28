@@ -34,6 +34,7 @@
 - [21. 字符串与格式化（0.9）](#21-字符串与格式化09)
 - [22. 未实现/将来](#22-未实现将来)
 - [23. 一句话总结](#23-一句话总结)
+- [24. 阿雅 v0.10 泛型增量文档（未来特性）](#24-阿雅-v010-泛型增量文档向后-100-兼容零新关键字无-where)
 - [术语表](#术语表)
 
 ---
@@ -117,7 +118,7 @@ let x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全
 
 ```aya
 // 阿雅：编译期证明，零运行时检查
-fn safe_access(arr: [i32; 10], i: i32) -> !i32 {
+fn safe_access(arr: [i32; 10], i: i32) !i32 {
     if i < 0 || i >= 10 {
         return error.OutOfBounds;  // 显式错误返回
     }
@@ -180,7 +181,7 @@ fn safe_access(arr: [i32; 10], i: i32) -> !i32 {
       - 基本形式：`"a${x}"`（无格式说明符）
       - 格式化形式：`"pi=${pi:.2f}"`（带格式说明符，与 C printf 保持一致）
     - 语法：`segment = TEXT | '${' expr [':' spec] '}'`
-    - 格式说明符 `spec` 与 C printf 保持一致，详见第 21 章
+    - 格式说明符 `spec` 与 C printf 保持一致，[详见第 21 章](#21-字符串与格式化09)
     - 编译期展开为定长栈数组，零运行时解析开销，零堆分配
     - 示例：`let msg: [i8; 64] = "hex=${x:#06x}, pi=${pi:.2f}\n";`
 - 数组字面量：
@@ -198,24 +199,25 @@ fn safe_access(arr: [i32; 10], i: i32) -> !i32 {
 | 阿雅类型        | C 对应        | 大小/对齐 | 备注                     |
 |-----------------|---------------|-----------|--------------------------|
 | `i8` `i16` `i32` `i64` | 同宽 signed | 1 2 4 8 B | 对齐 = 类型大小；支持 `max/min` 关键字访问极值（类型推断） |
+| `u8` `u16` `u32` `u64` | 同宽 unsigned | 1 2 4 8 B | 对齐 = 类型大小；无符号整数类型，用于与 C 互操作和格式化 |
 | `f32` `f64`     | float/double  | 4/8 B     | 对齐 = 类型大小          |
 | `bool`          | uint8_t       | 1 B       | 0/1，对齐 1 B            |
 | `byte`          | uint8_t       | 1 B       | 无符号字节，对齐 1 B，用于字节数组 |
 | `void`          | void          | 0 B       | 仅用于函数返回类型       |
 | `byte*`         | char*         | 4/8 B（平台相关） | 用于 FFI 函数参数和返回值，指向 C 字符串；32位平台=4B，64位平台=8B；可与 `null` 比较（空指针）|
 | `&T`            | 普通指针      | 8 B       | 无 lifetime 符号，见下方说明 |
-| `&atomic T`  | 原子指针      | 8 B       | 关键字驱动，见第 13 章 |
-| `atomic T`      | 原子类型      | sizeof(T) | 语言级原子类型，见第 13 章 |
+| `&atomic T`  | 原子指针      | 8 B       | 关键字驱动，[见第 13 章](#13-原子操作09-终极简洁) |
+| `atomic T`      | 原子类型      | sizeof(T) | 语言级原子类型，[见第 13 章](#13-原子操作09-终极简洁) |
 | `[T; N]`        | T[N]          | N·sizeof(T) | N 为编译期正整数，对齐 = T 的对齐 |
 | `struct S { }`  | struct S      | 字段顺序布局 | 对齐 = 最大字段对齐，见下方说明 |
-| `interface I { }` | -         | 16 B (64位) | vtable 指针(8B) + 数据指针(8B)，见第 6 章接口 |
-| `extern` 函数   | C 函数声明    | -         | 0.9 不支持函数指针类型，`extern` 仅用于声明外部 C 函数，见 5.2 |
+| `interface I { }` | -         | 16 B (64位) | vtable 指针(8B) + 数据指针(8B)，[见第 6 章接口](#6-接口interface) |
+| `extern` 函数   | C 函数声明    | -         | 0.9 不支持函数指针类型，`extern` 仅用于声明外部 C 函数，[见 5.2](#52-外部-c-函数ffi) |
 | `!T`            | 错误联合类型  | max(sizeof(T), sizeof(错误标记)) + 对齐填充 | `T | Error`，见下方说明 |
 
 - 无隐式转换；无指针算术；无 lifetime 符号。
 
 **类型相关的极值常量**：
-- 整数类型（`i8`, `i16`, `i32`, `i64`）支持通过 `max` 和 `min` 关键字访问极值
+- 整数类型（`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`）支持通过 `max` 和 `min` 关键字访问极值
 - 语法：`max` 和 `min`（编译器从上下文类型推断）
 - 编译器根据上下文类型自动推断极值类型，这些是编译期常量，零运行时开销
 - 示例：
@@ -243,7 +245,7 @@ fn safe_access(arr: [i32; 10], i: i32) -> !i32 {
   - 0.9 不支持指针算术
 - `&atomic T`：原子指针类型，8 字节，关键字驱动
   - 用于指向原子类型 `atomic T` 的指针
-  - 见第 13 章原子操作
+  - [见第 13 章原子操作](#13-原子操作09-终极简洁)
 - `*T`：仅用于接口方法签名，表示指针参数，不能用于普通变量声明或 FFI 函数声明
   - **语法规则**：
     - `*T` 语法仅在接口定义和 `impl` 块的方法签名中使用
@@ -372,8 +374,13 @@ let v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
     struct Inner { x: i32 }
     struct Outer { inner: Inner }
     
+    // ✅ 可以修改的情况
     let mut outer: Outer = Outer{ inner: Inner{ x: 10 } };
     outer.inner.x = 20;  // ✅ 可以修改，因为 outer 是 mut
+    
+    // ❌ 不能修改的情况
+    let outer: Outer = Outer{ inner: Inner{ x: 10 } };
+    outer.inner.x = 20;  // ❌ 编译错误：outer 不是 mut，无法修改字段
     ```
 - **结构体初始化**：必须提供所有字段的值，不支持部分初始化或默认值
 
@@ -384,11 +391,11 @@ let v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
 ### 5.1 普通函数
 
 ```aya
-fn add(a: i32, b: i32) -> i32 {
+fn add(a: i32, b: i32) i32 {
   return a + b;
 }
 
-fn print_hello() -> void {
+fn print_hello() void {
   // void 函数可省略 return
 }
 ```
@@ -407,7 +414,7 @@ fn print_hello() -> void {
 - **函数前向引用**：函数可以在定义之前调用（编译器多遍扫描）
 - **函数指针**：0.9 不支持函数指针类型，函数名不能作为值传递或存储，仅支持直接函数调用
 - **变参函数调用**：参数数量必须与 C 函数声明匹配（编译期检查有限）
-- **程序入口点**：必须定义 `fn main() -> i32`（程序退出码）
+- **程序入口点**：必须定义 `fn main() i32`（程序退出码）
   - 0.9 不支持命令行参数（后续版本支持 `main(argc: i32, argv: byte**)`）
 - **`return` 语句**：
   - `return expr;` 用于有返回值的函数
@@ -451,7 +458,7 @@ fn print_hello() -> void {
     // result 的类型是 i32（不是 !i32）
     
     // 示例 2：catch 块使用 return 提前返回函数
-    fn main() -> i32 {
+    fn main() i32 {
         let result: i32 = read_file("test.txt") catch |err| {
             printf("Failed to read file\n");
             return 1;  // 提前返回函数，退出 main 函数（跳过后续 defer 和 drop）
@@ -494,7 +501,7 @@ fn safe_divide(a: i32, b: i32) !i32 {
 }
 
 // ✅ 使用 catch 捕获错误
-fn main() -> i32 {
+fn main() i32 {
     let result: i32 = safe_divide(10, 0) catch |err| {
         if err == error.DivisionByZero {
             printf("Division by zero\n");
@@ -584,13 +591,13 @@ impl_block     = 'impl' struct_name ':' interface_name '{' method_impl { method_
 1. **返回接口值**：
    ```aya
    // ❌ 编译错误：s 的生命周期不足以支撑返回的接口值
-   fn example() -> IWriter {
+   fn example() IWriter {
        let s: Console = Console{ fd: 1 };
        return s;  // 编译错误：s 的生命周期不足
    }
    
    // ✅ 编译通过：返回具体类型，调用者装箱
-   fn example() -> Console {
+   fn example() Console {
        return Console{ fd: 1 };
    }
    ```
@@ -598,13 +605,13 @@ impl_block     = 'impl' struct_name ':' interface_name '{' method_impl { method_
 2. **赋值给外部变量**：
    ```aya
    // ❌ 编译错误：s 的生命周期不足以支撑外部接口值
-   fn example() -> void {
+   fn example() void {
        let s: Console = Console{ fd: 1 };
        let mut external: IWriter = s;  // 如果 external 生命周期更长，编译错误
    }
    
    // ✅ 编译通过：局部装箱，生命周期匹配
-   fn example() -> void {
+   fn example() void {
        let s: Console = Console{ fd: 1 };
        let local: IWriter = s;  // 局部变量，生命周期匹配
        // 使用 local...
@@ -614,11 +621,11 @@ impl_block     = 'impl' struct_name ':' interface_name '{' method_impl { method_
 3. **传递参数**：
    ```aya
    // ✅ 编译通过：参数传递，生命周期由调用者保证
-   fn use_writer(w: IWriter) -> void {
+   fn use_writer(w: IWriter) void {
        // 使用 w...
    }
    
-   fn example() -> void {
+   fn example() void {
        let s: Console = Console{ fd: 1 };
        use_writer(s);  // 编译通过：参数传递
    }
@@ -640,7 +647,7 @@ impl_block     = 'impl' struct_name ':' interface_name '{' method_impl { method_
 ```aya
 // ① 定义接口
 interface IWriter {
-  fn write(self: *Self, buf: *byte, len: i32) -> i32;
+  fn write(self: *Self, buf: *byte, len: i32) i32;
 }
 
 // ② 具体实现
@@ -649,19 +656,19 @@ struct Console {
 }
 
 impl Console : IWriter {
-  fn write(self: *Self, buf: *byte, len: i32) -> i32 {
+  fn write(self: *Self, buf: *byte, len: i32) i32 {
     extern i32 write(i32 fd, byte* buf, i32 len);
     return write(self.fd, buf, len);
   }
 }
 
 // ③ 使用接口
-fn echo(w: IWriter) -> void {
+fn echo(w: IWriter) void {
   let msg: [byte; 6] = "hello\n";
   w.write(&msg[0], 5);
 }
 
-fn main() -> i32 {
+fn main() i32 {
   let cons: Console = Console{ fd: 1 };   // stdout
   echo(cons);                             // 自动装箱为接口
   return 0;
@@ -750,16 +757,16 @@ error InvalidIteratorState;
 // i32数组迭代器接口
 interface IIteratorI32 {
     // 移动到下一个元素，返回错误表示迭代结束
-    fn next(self: *Self) -> !void;
+    fn next(self: *Self) !void;
     // 获取当前元素值
-    fn value(self: *Self) -> i32;
+    fn value(self: *Self) i32;
 }
 
 // 带索引的i32数组迭代器接口
 interface IIteratorI32WithIndex {
-    fn next(self: *Self) -> !void;
-    fn value(self: *Self) -> i32;
-    fn index(self: *Self) -> i32;
+    fn next(self: *Self) !void;
+    fn value(self: *Self) i32;
+    fn index(self: *Self) i32;
 }
 ```
 
@@ -774,14 +781,14 @@ struct ArrayIteratorI32 {
 }
 
 impl ArrayIteratorI32 : IIteratorI32 {
-    fn next(self: *Self) -> !void {
+    fn next(self: *Self) !void {
         if self.current >= self.len {
             return error.IterEnd;  // 迭代结束
         }
         self.current = self.current + 1;
     }
     
-    fn value(self: *Self) -> i32 {
+    fn value(self: *Self) i32 {
         // 编译器证明：由于next()成功返回，我们有 self.current > 0 && self.current <= self.len
         // 因此 idx = current - 1 满足 idx >= 0 && idx < len
         // 实际访问的是 current - 1 位置的元素
@@ -801,14 +808,14 @@ impl ArrayIteratorI32 : IIteratorI32 {
 
 // 带索引的数组迭代器实现
 impl ArrayIteratorI32 : IIteratorI32WithIndex {
-    fn next(self: *Self) -> !void {
+    fn next(self: *Self) !void {
         if self.current >= self.len {
             return error.IterEnd;
         }
         self.current = self.current + 1;
     }
     
-    fn value(self: *Self) -> i32 {
+    fn value(self: *Self) i32 {
         let idx: i32 = self.current - 1;
         // 编译期证明：由于 next() 成功返回，idx 在有效范围内
         if idx < 0 || idx >= self.len {
@@ -817,7 +824,7 @@ impl ArrayIteratorI32 : IIteratorI32WithIndex {
         return (*self.arr)[idx];
     }
     
-    fn index(self: *Self) -> i32 {
+    fn index(self: *Self) i32 {
         return self.current - 1;  // 返回当前索引（从0开始）
     }
 }
@@ -826,7 +833,7 @@ impl ArrayIteratorI32 : IIteratorI32WithIndex {
 **使用示例**：
 
 ```aya
-fn create_iterator(arr: *[i32; 10]) -> ArrayIteratorI32 {
+fn create_iterator(arr: *[i32; 10]) ArrayIteratorI32 {
     return ArrayIteratorI32{
         arr: arr,
         current: 0,
@@ -834,7 +841,7 @@ fn create_iterator(arr: *[i32; 10]) -> ArrayIteratorI32 {
     };
 }
 
-fn iterate_example() -> void {
+fn iterate_example() void {
     let arr: [i32; 5] = [1, 2, 3, 4, 5];
     let iter: IIteratorI32 = create_iterator(&arr);  // 自动装箱为接口
     
@@ -856,7 +863,7 @@ fn iterate_example() -> void {
 - 迭代器接口遵循Aya接口的设计原则：编译期生成vtable，零运行时开销
 - 使用错误联合类型 `!void` 表示迭代结束，符合Aya的错误处理机制
 - 需要为每种元素类型定义对应的迭代器接口（0.9限制）
-- for循环语法会自动使用这些接口进行迭代（见第8章）
+- for循环语法会自动使用这些接口进行迭代（[见第8章](#8-控制流)）
 
 ### 6.13 一句话总结
 
@@ -1115,7 +1122,7 @@ break; continue; return expr;
   - **完整示例**：
     ```aya
     // 示例 1：整数常量匹配（表达式形式）
-    fn classify_score(score: i32) -> i32 {
+    fn classify_score(score: i32) i32 {
         let grade: i32 = match score {
             90 => 5,
             80 => 4,
@@ -1127,7 +1134,7 @@ break; continue; return expr;
     }
     
     // 示例 2：错误类型匹配
-    fn handle_result(result: !i32) -> i32 {
+    fn handle_result(result: !i32) i32 {
         let value: i32 = match result {
             error.FileNotFound => -1,
             error.PermissionDenied => -2,
@@ -1142,7 +1149,7 @@ break; continue; return expr;
         y: i32
     }
     
-    fn classify_point(p: Point) -> i32 {
+    fn classify_point(p: Point) i32 {
         let quadrant: i32 = match p {
             Point{ x: 0, y: 0 } => 0,  // 原点
             Point{ x: x, y: y } => {
@@ -1161,7 +1168,7 @@ break; continue; return expr;
     }
     
     // 示例 4：字符串数组匹配（语句形式）
-    fn print_greeting(msg: [i8; 6]) -> void {
+    fn print_greeting(msg: [i8; 6]) void {
         match msg {
             "hello" => printf("Hello, world!\n"),
             "world" => printf("World, hello!\n"),
@@ -1190,7 +1197,7 @@ defer { statements }
 
 **示例**：
 ```aya
-fn example() -> void {
+fn example() void {
     defer {
         printf("Cleanup 1\n");
     }
@@ -1406,7 +1413,7 @@ fn nested_example() !void {
   let y: i32 = 2147483647 + 1;  // 编译错误
   
   // ✅ 编译通过：显式溢出检查，返回错误
-  fn add_safe(a: i32, b: i32) -> !i32 {
+  fn add_safe(a: i32, b: i32) !i32 {
       if a > 0 && b > 0 && a > 2147483647 - b {
           return error.Overflow;  // 返回错误
       }
@@ -1414,7 +1421,7 @@ fn nested_example() !void {
   }
   
   // ✅ 编译通过：显式溢出检查，返回饱和值（有效数值）
-  fn add_saturating(a: i32, b: i32) -> i32 {
+  fn add_saturating(a: i32, b: i32) i32 {
       if a > 0 && b > 0 && a > 2147483647 - b {
           return 2147483647;  // 上溢时返回最大值
       }
@@ -1426,7 +1433,7 @@ fn nested_example() !void {
   
   // ✅ 编译通过：显式溢出检查，返回包装值（有效数值）
   // 注意：包装算术需要显式处理，不能依赖未定义行为
-  fn add_wrapping(a: i32, b: i32) -> i32 {
+  fn add_wrapping(a: i32, b: i32) i32 {
       // 显式检查溢出，如果溢出则返回包装后的值
       if a > 0 && b > 0 && a > 2147483647 - b {
           // 包装算术：溢出时返回 (a + b) % 2^32，但需要显式计算
@@ -1442,7 +1449,7 @@ fn nested_example() !void {
   }
   
   // ❌ 编译错误：无法证明无溢出
-  fn add_unsafe(a: i32, b: i32) -> i32 {
+  fn add_unsafe(a: i32, b: i32) i32 {
       return a + b;  // 编译错误
   }
   ```
@@ -1632,7 +1639,7 @@ let y: f32 = x as! f32;
    - 数组元素按索引逆序 drop（`arr[N-1]`, `arr[N-2]`, ..., `arr[0]`）
    - 然后 drop 数组本身（数组本身的 drop 是空函数，但会调用元素的 drop）
    - 如果数组元素类型有自定义 drop，会调用元素的 drop；如果元素类型是基本类型，drop 是空函数
-5. **用户自定义 drop**：`fn drop(self: T) -> void { ... }`
+5. **用户自定义 drop**：`fn drop(self: T) void { ... }`
    - 允许用户为自定义类型定义清理逻辑
    - 实现真正的 RAII 模式（文件自动关闭、内存自动释放等）
    - 每个类型只能有一个 drop 函数
@@ -1647,7 +1654,7 @@ struct Point {
   y: f32
 }
 
-fn example() -> void {
+fn example() void {
   let p: Point = Point{ x: 1.0, y: 2.0 };
   // 使用 p...
   // 离开作用域时，编译器自动插入：
@@ -1662,7 +1669,7 @@ struct Line {
   end: Point
 }
 
-fn nested_example() -> void {
+fn nested_example() void {
   let line: Line = Line{
     start: Point{ x: 0.0, y: 0.0 },
     end: Point{ x: 1.0, y: 1.0 }
@@ -1689,13 +1696,13 @@ struct File {
     fd: i32
 }
 
-fn drop(self: File) -> void {
+fn drop(self: File) void {
     if self.fd >= 0 {
         close(self.fd);
     }
 }
 
-fn example1() -> void {
+fn example1() void {
     let f: File = File{ fd: open("file.txt", 0) };
     // 使用文件...
     // 离开作用域时自动调用 drop，自动关闭文件
@@ -1710,13 +1717,13 @@ struct HeapBuffer {
     size: i32
 }
 
-fn drop(self: HeapBuffer) -> void {
+fn drop(self: HeapBuffer) void {
     if self.data != null {
         free(self.data);
     }
 }
 
-fn example2() -> void {
+fn example2() void {
     let buf: HeapBuffer = HeapBuffer{
         data: malloc(100),
         size: 100
@@ -1731,7 +1738,7 @@ struct FileReader {
     buffer: [byte; 1024]  // 数组本身的 drop 是空函数，但会调用元素的 drop（byte 的 drop 是空函数）
 }
 
-fn example3() -> void {
+fn example3() void {
     let reader: FileReader = FileReader{
         file: File{ fd: open("file.txt", 0) },
         buffer: [0; 1024]
@@ -1747,7 +1754,7 @@ fn example3() -> void {
 
 ```aya
 // 基本类型：drop 是空函数
-fn example_basic() -> void {
+fn example_basic() void {
   let x: i32 = 10;
   let y: f64 = 3.14;
   // 离开作用域时，编译器会插入：
@@ -1756,7 +1763,7 @@ fn example_basic() -> void {
 }
 
 // 数组：元素按索引逆序 drop
-fn example_array() -> void {
+fn example_array() void {
   let arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
   // 离开作用域时，编译器会插入：
   // drop(arr[3]);  // 逆序 drop 元素
@@ -1767,7 +1774,7 @@ fn example_array() -> void {
 }
 
 // 作用域嵌套：变量在各自作用域结束时 drop
-fn example_scope() -> void {
+fn example_scope() void {
   let outer: i32 = 10;
   {
     let inner: i32 = 20;
@@ -1777,12 +1784,12 @@ fn example_scope() -> void {
 }
 
 // 函数参数：按值传递，函数返回时会 drop
-fn process(data: Point) -> void {
+fn process(data: Point) void {
   // data 在这里 drop（函数返回时）
 }
 
 // 函数返回值：被调用者接收，在调用者作用域中 drop
-fn create_point() -> Point {
+fn create_point() Point {
   return Point{ x: 1.0, y: 2.0 };
   // 返回值不会在这里 drop，而是传递给调用者
 }
@@ -1820,7 +1827,7 @@ struct Counter {
   value: atomic i32
 }
 
-fn increment(counter: *Counter) -> void {
+fn increment(counter: *Counter) void {
   counter.value += 1;  // 自动原子 fetch_add
   let v: i32 = counter.value;  // 自动原子 load
   counter.value = 10;  // 自动原子 store
@@ -1903,7 +1910,7 @@ let x: i32 = arr[5];  // 5 < 10，编译期证明安全
 let y: i32 = arr[10];  // 10 >= 10，编译错误
 
 // ✅ 编译通过：变量索引有证明
-fn safe_access(arr: [i32; 10], i: i32) -> i32 {
+fn safe_access(arr: [i32; 10], i: i32) i32 {
   if i < 0 || i >= 10 {
     return error.OutOfBounds;
   }
@@ -1911,7 +1918,7 @@ fn safe_access(arr: [i32; 10], i: i32) -> i32 {
 }
 
 // ❌ 编译错误：变量索引无证明
-fn unsafe_access(arr: [i32; 10], i: i32) -> i32 {
+fn unsafe_access(arr: [i32; 10], i: i32) i32 {
   return arr[i];  // 无法证明 i >= 0 && i < 10，编译错误
 }
 ```
@@ -1938,14 +1945,14 @@ error Overflow;
 // 使用标准库函数（推荐，最优雅）
 error Overflow;
 
-fn add_safe(a: i32, b: i32) -> !i32 {
+fn add_safe(a: i32, b: i32) !i32 {
     return checked_add(a, b);  // 自动检查溢出，溢出返回错误
 }
 
 // 注意：error Overflow; 必须在顶层定义，不能在函数内定义
 
 // 方式1（备选）：手动检查（如果需要自定义逻辑）
-fn add_safe_manual(a: i32, b: i32) -> !i32 {
+fn add_safe_manual(a: i32, b: i32) !i32 {
     // 显式检查上溢：a > 0 && b > 0 && a + b > MAX
     // 编译器从 a 和 b 的类型 i32 推断 max 和 min 的类型
     if a > 0 && b > 0 && a > max - b {
@@ -1961,12 +1968,12 @@ fn add_safe_manual(a: i32, b: i32) -> !i32 {
 
 // 方式2：返回饱和值（有效数值）
 // 使用标准库函数（推荐，最优雅）
-fn add_saturating(a: i32, b: i32) -> i32 {
+fn add_saturating(a: i32, b: i32) i32 {
     return saturating_add(a, b);  // 自动饱和，溢出返回极值
 }
 
 // 方式2（备选）：手动检查（如果需要自定义逻辑）
-fn add_saturating_manual(a: i32, b: i32) -> i32 {
+fn add_saturating_manual(a: i32, b: i32) i32 {
     // 显式检查上溢：返回最大值
     // 编译器从函数返回类型和参数类型推断 max/min 的类型
     if a > 0 && b > 0 && a > max - b {
@@ -1982,12 +1989,12 @@ fn add_saturating_manual(a: i32, b: i32) -> i32 {
 
 // 方式3：返回包装值（有效数值）
 // 使用标准库函数（推荐，最优雅）
-fn add_wrapping(a: i32, b: i32) -> i32 {
+fn add_wrapping(a: i32, b: i32) i32 {
     return wrapping_add(a, b);  // 自动包装，溢出返回包装值
 }
 
 // 方式3（备选）：手动检查（如果需要自定义逻辑）
-fn add_wrapping_manual(a: i32, b: i32) -> i32 {
+fn add_wrapping_manual(a: i32, b: i32) i32 {
     // 包装算术的实现：使用更大的类型进行计算，然后截断
     // 这样即使溢出，也会自动包装回类型的另一端
     let sum: i64 = (a as i64) + (b as i64);
@@ -2004,12 +2011,12 @@ fn add_wrapping_manual(a: i32, b: i32) -> i32 {
 
 // ✅ 编译通过：乘法溢出检查
 // 使用标准库函数（推荐，最优雅）
-fn mul_safe(a: i32, b: i32) -> !i32 {
+fn mul_safe(a: i32, b: i32) !i32 {
     return checked_mul(a, b);  // 自动检查溢出，溢出返回错误
 }
 
 // 方式（备选）：手动检查（如果需要自定义逻辑）
-fn mul_safe_manual(a: i32, b: i32) -> !i32 {
+fn mul_safe_manual(a: i32, b: i32) !i32 {
     if a == 0 || b == 0 {
         return 0;  // 零乘法，无溢出
     }
@@ -2035,17 +2042,17 @@ fn mul_safe_manual(a: i32, b: i32) -> !i32 {
 }
 
 // ❌ 编译错误：无法证明无溢出
-fn add_unsafe(a: i32, b: i32) -> i32 {
+fn add_unsafe(a: i32, b: i32) i32 {
     return a + b;  // 编译错误：无法证明 a + b 不会溢出
 }
 
 // ❌ 编译错误：无法证明无溢出
-fn mul_unsafe(a: i32, b: i32) -> i32 {
+fn mul_unsafe(a: i32, b: i32) i32 {
     return a * b;  // 编译错误：无法证明 a * b 不会溢出
 }
 
 // ✅ 编译通过：已知范围的变量
-fn add_known_range(a: i32, b: i32) -> i32 {
+fn add_known_range(a: i32, b: i32) i32 {
     // 如果编译器可以证明 a 和 b 都在安全范围内
     // 例如：a 和 b 都是数组索引（已验证 < 1000）
     // 编译器可以证明 a + b < 2000 < 2147483647，无溢出
@@ -2067,12 +2074,12 @@ let z64: i64 = min - 1;  // 编译错误：常量下溢（从类型注解 i64 �
 
 // ✅ 编译通过：i64 变量运算有显式溢出检查
 // 使用标准库函数（推荐，最优雅）
-fn add_safe_i64(a: i64, b: i64) -> !i64 {
+fn add_safe_i64(a: i64, b: i64) !i64 {
     return checked_add(a, b);  // 自动检查溢出，溢出返回错误
 }
 
 // 方式（备选）：手动检查（如果需要自定义逻辑）
-fn add_safe_i64_manual(a: i64, b: i64) -> !i64 {
+fn add_safe_i64_manual(a: i64, b: i64) !i64 {
     // 显式检查上溢：a > 0 && b > 0 && a + b > MAX
     // 编译器从参数类型 i64 推断 max/min 的类型
     if a > 0 && b > 0 && a > max - b {
@@ -2088,12 +2095,12 @@ fn add_safe_i64_manual(a: i64, b: i64) -> !i64 {
 
 // ✅ 编译通过：i64 乘法溢出检查
 // 使用标准库函数（推荐，最优雅）
-fn mul_safe_i64(a: i64, b: i64) -> !i64 {
+fn mul_safe_i64(a: i64, b: i64) !i64 {
     return checked_mul(a, b);  // 自动检查溢出，溢出返回错误
 }
 
 // 方式（备选）：手动检查（如果需要自定义逻辑）
-fn mul_safe_i64_manual(a: i64, b: i64) -> !i64 {
+fn mul_safe_i64_manual(a: i64, b: i64) !i64 {
     if a == 0 || b == 0 {
         return 0;  // 零乘法，无溢出
     }
@@ -2119,12 +2126,12 @@ fn mul_safe_i64_manual(a: i64, b: i64) -> !i64 {
 }
 
 // ❌ 编译错误：i64 无法证明无溢出
-fn add_unsafe_i64(a: i64, b: i64) -> i64 {
+fn add_unsafe_i64(a: i64, b: i64) i64 {
     return a + b;  // 编译错误：无法证明 a + b 不会溢出
 }
 
 // ✅ 编译通过：i64 已知范围的变量
-fn add_known_range_i64(a: i64, b: i64) -> !i64 {
+fn add_known_range_i64(a: i64, b: i64) !i64 {
     // 如果编译器可以证明 a 和 b 都在安全范围内
     // 例如：a 和 b 都是已验证的范围（< 1000000000）
     if a < 0 || a >= 1000000000 || b < 0 || b >= 1000000000 {
@@ -2151,17 +2158,17 @@ fn add_known_range_i64(a: i64, b: i64) -> !i64 {
      error Overflow;
      
      // checked 系列：返回错误联合类型
-     fn add_safe(a: i32, b: i32) -> !i32 {
+     fn add_safe(a: i32, b: i32) !i32 {
          return checked_add(a, b);  // 自动检查溢出
      }
      
      // saturating 系列：返回饱和值
-     fn add_saturating(a: i32, b: i32) -> i32 {
+     fn add_saturating(a: i32, b: i32) i32 {
          return saturating_add(a, b);  // 自动饱和
      }
      
      // wrapping 系列：返回包装值
-     fn add_wrapping(a: i32, b: i32) -> i32 {
+     fn add_wrapping(a: i32, b: i32) i32 {
          return wrapping_add(a, b);  // 自动包装
      }
      ```
@@ -2259,13 +2266,13 @@ struct Counter {
 }
 
 impl Counter : IIncrement {
-  fn inc(self: *Self) -> i32 {
+  fn inc(self: *Self) i32 {
     self.value += 1;  // 自动原子 fetch_add
     return self.value;  // 自动原子 load
   }
 }
 
-fn main() -> i32 {
+fn main() i32 {
   let counter: Counter = Counter{ value: 0 };
   // 多线程并发递增，零数据竞争
   // 所有操作自动原子化，无需锁
@@ -2288,18 +2295,18 @@ fn main() -> i32 {
 
 | 函数 | 签名 | 说明 |
 |------|------|------|
-| `len` | `fn len(a: [T; N]) -> i32` | 返回数组元素个数 `N`（编译期常量） |
-| `iter` | `fn iter(arr: *[T; N]) -> IteratorT` | 为数组创建迭代器，返回类型取决于元素类型 `T` |
-| `range` | `fn range(start: i32, end: i32) -> RangeIterator` | 创建整数范围迭代器，迭代从 `start` 到 `end-1` |
-| `checked_add` | `fn checked_add(a: T, b: T) -> !T` | 检查加法溢出，溢出返回错误，否则返回值 |
-| `checked_sub` | `fn checked_sub(a: T, b: T) -> !T` | 检查减法溢出，溢出返回错误，否则返回值 |
-| `checked_mul` | `fn checked_mul(a: T, b: T) -> !T` | 检查乘法溢出，溢出返回错误，否则返回值 |
-| `saturating_add` | `fn saturating_add(a: T, b: T) -> T` | 饱和加法，溢出返回极值 |
-| `saturating_sub` | `fn saturating_sub(a: T, b: T) -> T` | 饱和减法，溢出返回极值 |
-| `saturating_mul` | `fn saturating_mul(a: T, b: T) -> T` | 饱和乘法，溢出返回极值 |
-| `wrapping_add` | `fn wrapping_add(a: T, b: T) -> T` | 包装加法，溢出返回包装值 |
-| `wrapping_sub` | `fn wrapping_sub(a: T, b: T) -> T` | 包装减法，溢出返回包装值 |
-| `wrapping_mul` | `fn wrapping_mul(a: T, b: T) -> T` | 包装乘法，溢出返回包装值 |
+| `len` | `fn len(a: [T; N]) i32` | 返回数组元素个数 `N`（编译期常量） |
+| `iter` | `fn iter(arr: *[T; N]) IteratorT` | 为数组创建迭代器，返回类型取决于元素类型 `T` |
+| `range` | `fn range(start: i32, end: i32) RangeIterator` | 创建整数范围迭代器，迭代从 `start` 到 `end-1` |
+| `checked_add` | `fn checked_add(a: T, b: T) !T` | 检查加法溢出，溢出返回错误，否则返回值 |
+| `checked_sub` | `fn checked_sub(a: T, b: T) !T` | 检查减法溢出，溢出返回错误，否则返回值 |
+| `checked_mul` | `fn checked_mul(a: T, b: T) !T` | 检查乘法溢出，溢出返回错误，否则返回值 |
+| `saturating_add` | `fn saturating_add(a: T, b: T) T` | 饱和加法，溢出返回极值 |
+| `saturating_sub` | `fn saturating_sub(a: T, b: T) T` | 饱和减法，溢出返回极值 |
+| `saturating_mul` | `fn saturating_mul(a: T, b: T) T` | 饱和乘法，溢出返回极值 |
+| `wrapping_add` | `fn wrapping_add(a: T, b: T) T` | 包装加法，溢出返回包装值 |
+| `wrapping_sub` | `fn wrapping_sub(a: T, b: T) T` | 包装减法，溢出返回包装值 |
+| `wrapping_mul` | `fn wrapping_mul(a: T, b: T) T` | 包装乘法，溢出返回包装值 |
 
 **说明**：
 - `T` 支持：`i8`, `i16`, `i32`, `i64`
@@ -2308,7 +2315,7 @@ fn main() -> i32 {
 
 **函数详细说明**：
 
-1. **`len(a: [T; N]) -> i32`**
+1. **`len(a: [T; N]) i32`**
    - 功能：返回数组的元素个数
    - 参数：`a` 是任意类型 `T` 的数组，大小为 `N`
    - 返回值：`i32` 类型，值为 `N`（编译期常量）
@@ -2319,7 +2326,7 @@ fn main() -> i32 {
      let size: i32 = len(arr);  // size = 10（编译期常量）
      ```
 
-2. **`iter(arr: *[T; N]) -> IteratorT`**
+2. **`iter(arr: *[T; N]) IteratorT`**
    - 功能：为数组创建迭代器
    - 参数：`arr` 是指向数组的指针（类型 `*[T; N]`）
    - 返回值：返回类型取决于数组元素类型 `T`
@@ -2334,7 +2341,7 @@ fn main() -> i32 {
      let iter: IIteratorI32 = iter(&arr);  // 自动装箱为接口
      ```
 
-3. **`range(start: i32, end: i32) -> RangeIterator`**
+3. **`range(start: i32, end: i32) RangeIterator`**
    - 功能：创建整数范围迭代器，迭代从 `start` 到 `end-1` 的整数（左闭右开区间）
    - 参数：
      - `start`：起始值（包含）
@@ -2363,7 +2370,7 @@ fn main() -> i32 {
        error Overflow;
        
        // 优雅的溢出检查
-       fn add_safe(a: i32, b: i32) -> !i32 {
+       fn add_safe(a: i32, b: i32) !i32 {
            return checked_add(a, b);  // 自动检查溢出，溢出返回错误
        }
        
@@ -2377,7 +2384,7 @@ fn main() -> i32 {
        };
        
        // 使用示例：传播错误
-       fn calculate(a: i32, b: i32, c: i32) -> !i32 {
+       fn calculate(a: i32, b: i32, c: i32) !i32 {
            let sum: i32 = try checked_add(a, b);  // 溢出时向上传播错误
            return checked_add(sum, c);  // 继续检查
        }
@@ -2393,7 +2400,7 @@ fn main() -> i32 {
      - **示例**：
        ```aya
        // 优雅的饱和算术
-       fn add_saturating(a: i32, b: i32) -> i32 {
+       fn add_saturating(a: i32, b: i32) i32 {
            return saturating_add(a, b);  // 自动饱和，溢出返回极值
        }
        
@@ -2421,7 +2428,7 @@ fn main() -> i32 {
    - **wrapping 系列**：返回包装值，溢出时返回包装后的值
      ```aya
      // 优雅的包装算术
-     fn add_wrapping(a: i32, b: i32) -> i32 {
+     fn add_wrapping(a: i32, b: i32) i32 {
          return wrapping_add(a, b);  // 自动包装，溢出返回包装值
      }
      
@@ -2475,7 +2482,7 @@ struct Mat4 {
 
 extern i32 printf(byte* fmt, ...);
 
-fn print_mat(mat: Mat4) -> void {
+fn print_mat(mat: Mat4) void {
   let mut i: i32 = 0;
   while i < 16 {
     printf("%f ", mat.m[i]);
@@ -2484,7 +2491,7 @@ fn print_mat(mat: Mat4) -> void {
   }
 }
 
-fn main() -> i32 {
+fn main() i32 {
   let mut m: Mat4 = Mat4{ m: [0.0; 16] };
   m.m[0]  = 1.0;
   m.m[5]  = 1.0;
@@ -2529,7 +2536,7 @@ fn open_file(path: byte*) !File {
     return File{ fd: fd };
 }
 
-fn drop(self: File) -> void {
+fn drop(self: File) void {
     if self.fd >= 0 {
         close(self.fd);
     }
@@ -2553,7 +2560,7 @@ fn read_file(path: byte*) !i32 {
     return n;
 }
 
-fn main() -> i32 {
+fn main() i32 {
     let result: i32 = read_file("test.txt") catch |err| {
         // err 是 Error 类型，支持相等性比较
         if err == error.FileError {
@@ -2578,17 +2585,17 @@ struct Counter {
 }
 
 interface IIncrement {
-  fn inc(self: *Self) -> i32;
+  fn inc(self: *Self) i32;
 }
 
 impl Counter : IIncrement {
-  fn inc(self: *Self) -> i32 {
+  fn inc(self: *Self) i32 {
     self.value += 1;                           // 自动原子 fetch_add
     return self.value;                         // 自动原子 load
   }
 }
 
-fn main() -> i32 {
+fn main() i32 {
   let counter: Counter = Counter{ value: 0 };
   // 多线程并发递增，零数据竞争
   // 所有操作自动原子化，无需锁
@@ -2610,15 +2617,15 @@ error InvalidIteratorState;
 
 // i32数组迭代器接口
 interface IIteratorI32 {
-    fn next(self: *Self) -> !void;
-    fn value(self: *Self) -> i32;
+    fn next(self: *Self) !void;
+    fn value(self: *Self) i32;
 }
 
 // 带索引的i32数组迭代器接口
 interface IIteratorI32WithIndex {
-    fn next(self: *Self) -> !void;
-    fn value(self: *Self) -> i32;
-    fn index(self: *Self) -> i32;
+    fn next(self: *Self) !void;
+    fn value(self: *Self) i32;
+    fn index(self: *Self) i32;
 }
 
 // i32数组迭代器结构体
@@ -2629,14 +2636,14 @@ struct ArrayIteratorI32 {
 }
 
 impl ArrayIteratorI32 : IIteratorI32 {
-    fn next(self: *Self) -> !void {
+    fn next(self: *Self) !void {
         if self.current >= self.len {
             return error.IterEnd;
         }
         self.current = self.current + 1;
     }
     
-    fn value(self: *Self) -> i32 {
+    fn value(self: *Self) i32 {
         let idx: i32 = self.current - 1;
         // 编译期证明：由于 next() 成功返回，idx 在有效范围内
         if idx < 0 || idx >= self.len {
@@ -2647,14 +2654,14 @@ impl ArrayIteratorI32 : IIteratorI32 {
 }
 
 impl ArrayIteratorI32 : IIteratorI32WithIndex {
-    fn next(self: *Self) -> !void {
+    fn next(self: *Self) !void {
         if self.current >= self.len {
             return error.IterEnd;
         }
         self.current = self.current + 1;
     }
     
-    fn value(self: *Self) -> i32 {
+    fn value(self: *Self) i32 {
         let idx: i32 = self.current - 1;
         // 编译期证明：由于 next() 成功返回，idx 在有效范围内
         if idx < 0 || idx >= self.len {
@@ -2663,13 +2670,13 @@ impl ArrayIteratorI32 : IIteratorI32WithIndex {
         return (*self.arr)[idx];
     }
     
-    fn index(self: *Self) -> i32 {
+    fn index(self: *Self) i32 {
         return self.current - 1;
     }
 }
 
 // 标准库函数：为数组创建迭代器
-fn iter(arr: *[i32; N]) -> ArrayIteratorI32 {
+fn iter(arr: *[i32; N]) ArrayIteratorI32 {
     return ArrayIteratorI32{
         arr: arr,
         current: 0,
@@ -2677,7 +2684,7 @@ fn iter(arr: *[i32; N]) -> ArrayIteratorI32 {
     };
 }
 
-fn main() -> i32 {
+fn main() i32 {
     let arr: [i32; 5] = [10, 20, 30, 40, 50];
     
     // 示例1：基本迭代（只获取元素值）
@@ -2798,7 +2805,7 @@ type    = 'd' | 'u' | 'x' | 'X' | 'f' | 'F' | 'g' | 'G' | 'c' | 'p'
 ```aya
 extern i32 printf(byte* fmt, ...);
 
-fn main() -> i32 {
+fn main() i32 {
   let x: u32 = 255;
   let pi: f64 = 3.1415926;
 
@@ -2909,6 +2916,253 @@ call memcpy(ptr %buf+43, ptr @str.2, i64 2)            ; "\n"
 > **只加 1 个关键字 `atomic T`，其余零新符号**；  
 > **所有 UB 必须被编译期证明为安全 → 失败即编译错误**；  
 > **通过路径零指令，失败路径不存在，不降级、不插运行时锁。**
+
+---
+
+## 24 阿雅 v0.10 泛型增量文档（向后 100% 兼容，零新关键字，无 `where`）
+
+> **注意**：本章描述的是 v0.10 版本的未来特性，当前 0.9 版本尚未实现。  
+> — 单页纸，直接附在 0.9 规范末尾 —
+
+------------------------------------------------
+1. 核心规则（仅 3 行）
+------------------------------------------------
+1. 在 interface / struct / fn 签名里首次出现**未事先声明**的类型标识符 ⇒ 自动视为该定义的**泛型参数**（按出现顺序排）。  
+2. impl / 调用时把**具体类型**写进括号 `(T1, T2, …)` 即完成单态化；找不到对应参数 ⇒ 编译错误。  
+3. 单态化后走原有 0.9 全部流程（UB 证明、drop、atomic、接口检查等）。
+
+------------------------------------------------
+2. 语法影子（用户侧 0 新符号）
+------------------------------------------------
+| 场景 | 0.9 旧写法 | v0.10 泛型写法 | 备注 |
+|---|---|---|---|
+| 泛型接口 | `interface I { fn f(x: i32); }` | `interface I { fn f(x: T); }` | 裸名 `T` 自动成参 |
+| 泛型结构体 | `struct S { x: i32; }` | `struct S { x: T; }` | 裸名 `T` 自动成参 |
+| 泛型函数 | 无 | `fn id(x: T) T { return x; }` | 裸名 `T` 自动成参 |
+| 实例化 | `impl S : I { … }` | `impl S : I(i32) { … }` | 括号内给实参 |
+| 多参数 | 无 | `fn swap(x: A, y: B) (B, A) {…}` | 未声明裸名均成参 |
+
+> 括号 `()` 已存在于函数调用/元组，**不算新符号**。
+
+------------------------------------------------
+3. 实例化规则
+------------------------------------------------
+- 顺序对应：按裸名首次出现顺序一一替换。  
+- 可写多行：`impl Vec { T = i32; }` 或一行 `impl Vec { T = i32; }`。  
+- 未用完/多给均报错，防止错位。
+
+------------------------------------------------
+4. 约束：靠"接口位置"表达上界
+------------------------------------------------
+```aya
+interface Add {
+    fn add(self: *Self, rhs: R) R;   // R 自动成参
+}
+
+impl Num : Add(i32) {   // 把 R 换成 i32
+    fn add(self: *Self, rhs: i32) i32 {
+        return self.x + rhs;
+    }
+}
+```
+单态化时编译器查找 `impl 具体类型 : Add(i32)`，找不到即报错——与 0.9 接口检查**同一套逻辑**。
+
+------------------------------------------------
+5. 函数级实例化：第一次调用即生成
+------------------------------------------------
+```aya
+fn id(x: T) T { return x; }
+
+let n: i32 = 42;
+let m: i32 = id(n);   // 第一次调用 → 生成 id_i32
+let p: f64 = id(3.14); // 第二次调用 → 生成 id_f64
+```
+后续再遇到 `id(i32)` 直接复用已生成代码，**无运行时派发**。
+
+------------------------------------------------
+6. 完整小例子
+------------------------------------------------
+```aya
+interface Add {
+    fn add(self: *Self, rhs: R) R;   // R 自动成参
+}
+
+struct Num { x: i32; }
+
+impl Num : Add(i32) {   // 把 R 换成 i32
+    fn add(self: *Self, rhs: i32) i32 {
+        return self.x + rhs;
+    }
+}
+
+fn sum(a: T, b: T) T {        // T 自动成参
+    return a.add(b);             // 要求 T 实现 Add(i32)
+}
+
+fn main() i32 {
+    let n1 = Num{ x: 1 };
+    let n2 = Num{ x: 2 };
+    let n3: Num = sum(n1, n2);   // T = Num
+    return n3.x;                 // 3
+}
+```
+
+------------------------------------------------
+6.1 struct 泛型示例
+------------------------------------------------
+```aya
+// 泛型结构体：T 自动成为泛型参数
+struct Vec {
+    data: [T; 10],   // T 自动成参
+    len: i32
+}
+
+// 实例化：使用具体类型
+fn create_i32_vec() Vec(i32) {   // 括号内指定 T = i32
+    return Vec(i32){
+        data: [0; 10],
+        len: 0
+    };
+}
+
+fn create_f64_vec() Vec(f64) {   // 括号内指定 T = f64
+    return Vec(f64){
+        data: [0.0; 10],
+        len: 0
+    };
+}
+
+// 泛型方法
+fn push(self: *Vec(T), item: T) void {   // T 自动成参
+    if self.len >= 10 {
+        return;  // 简化示例，实际应返回错误
+    }
+    self.data[self.len] = item;
+    self.len = self.len + 1;
+}
+
+fn main() i32 {
+    let mut v1: Vec(i32) = create_i32_vec();
+    push(&v1, 42);   // T = i32，自动推断
+    
+    let mut v2: Vec(f64) = create_f64_vec();
+    push(&v2, 3.14);   // T = f64，自动推断
+    
+    return 0;
+}
+```
+
+------------------------------------------------
+6.2 类型别名实现（阿雅风格）
+------------------------------------------------
+使用 `type =` 语法实现类型别名，**可以别名任意类型**，零运行时开销，语义清晰：
+
+```aya
+// 基础类型别名
+type UserId = i32;
+type Distance = f64;
+type Flag = bool;
+
+// 数组类型别名
+type Name = [i8; 64];           // 字符串数组
+type Buffer = [byte; 1024];     // 字节缓冲区
+type Matrix = [f32; 16];        // 4x4 矩阵
+
+// 结构体类型别名
+struct Point { x: f32, y: f32 }
+type Position = Point;          // 结构体别名
+type Location = Point;           // 同一结构体的不同语义别名
+
+// 接口类型别名
+interface IWriter {
+    fn write(self: *Self, buf: *byte, len: i32) i32;
+}
+type Output = IWriter;          // 接口别名
+
+// 指针类型别名
+type StringPtr = byte*;          // FFI 字符串指针
+type DataPtr = &[i32; 10];      // 数组指针
+
+// 错误联合类型别名
+error FileError;
+type FileResult = !i32;          // 错误联合类型别名
+type ParseResult = !void;        // 错误联合类型别名
+
+// 泛型类型别名
+struct Vec { data: [T; 10], len: i32 }
+type IntVec = Vec(i32);          // 泛型实例化别名
+type FloatVec = Vec(f64);        // 泛型实例化别名
+
+// 嵌套类型别名
+type PointArray = [Point; 10];   // 结构体数组
+type WriterPtr = &IWriter;       // 接口指针（如果支持）
+
+// 使用示例
+fn create_user() UserId {
+    return 1001;
+}
+
+fn calculate_distance(x: Distance, y: Distance) Distance {
+    return x + y;
+}
+
+fn process_name(name: Name) void {
+    // 处理名称
+}
+
+fn create_point() Position {
+    return Position{ x: 1.0, y: 2.0 };
+}
+
+fn open_file() FileResult {
+    // 返回文件结果
+    return 0;
+}
+
+fn main() i32 {
+    let uid: UserId = create_user();
+    let d1: Distance = 10.5;
+    let d2: Distance = 20.3;
+    let total: Distance = calculate_distance(d1, d2);
+    
+    let name: Name = "hello";
+    let pos: Position = create_point();
+    let result: FileResult = open_file();
+    
+    let mut vec: IntVec = Vec(i32){ data: [0; 10], len: 0 };
+    
+    return 0;
+}
+```
+
+**特性**：
+- **可以别名任意类型**：基础类型、数组、结构体、接口、指针、错误联合类型、泛型等
+- **零运行时开销**：类型别名在编译期展开，与底层类型完全相同
+- **语义清晰**：类型名称直接表达语义意图，提高代码可读性
+- **零新关键字**：`type` 关键字（如果尚未使用）或复用现有语法
+- **编译期展开**：所有类型别名在编译期展开为底层类型，零运行时成本
+
+**注意**：类型别名在类型系统中被视为与底层类型相同，主要用于提高代码可读性和语义表达。
+
+------------------------------------------------
+7. 零新增清单
+------------------------------------------------
+- 新关键字：0  
+- 新标点：0  
+- 新语法：复用已有 `interface` / `struct` / `fn` / `impl` / `()`  
+- 编译器增量：≈ 200 行（裸名收集 + 单例替换）
+
+------------------------------------------------
+8. 向后兼容
+------------------------------------------------
+- 所有 0.9 源码**零修改**直接编译；  
+- 只有出现"未声明类型名"时才触发泛型分支；  
+- 单态化后仍走原有**零运行时、零 GC、编译期 UB 证明**全套流程。
+
+------------------------------------------------
+9. 一句话总结
+------------------------------------------------
+阿雅 v0.10 泛型 = **"签名里写个没声明的类型名"** + `impl` 时括号里给实参；零关键字、零符号、零运行时成本，单页纸读完，0.9 代码无缝继续用。
 
 ---
 
