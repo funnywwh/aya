@@ -1,4 +1,4 @@
-# 优雅语言规范 0.12（完整版 · 2025-12-28）
+# 优雅语言规范 0.12（完整版 · 2025-12-29）
 
 > 零GC · 默认Rust级安全 · 单页纸可读完 · 通过路径零指令  
 > 无lifetime符号 · 无隐式控制
@@ -86,12 +86,12 @@ if i < arr.len() {
 
 ```uya
 // 优雅：程序员提供证明，编译器验证证明
-let arr: [i32; 10] = [0; 10];
-let i: i32 = get_index();
+const arr: [i32; 10] = [0; 10];
+const i: i32 = get_index();
 if i < 0 || i >= 10 {
     return error.OutOfBounds;  // 显式检查，返回错误
 }
-let x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全
+const x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全
 ```
 
 ### 责任转移的哲学
@@ -150,7 +150,7 @@ fn safe_access(arr: [i32; 10], i: i32) !i32 {
 - 文件编码 UTF-8，Unix 换行 `\n`。
 - 关键字保留：
   ```
-  struct let mut const fn return extern true false if while break continue
+  struct const var fn return extern true false if while break continue
   defer errdefer try catch error null interface impl atomic max min
   ```
 - 标识符 `[A-Za-z_][A-Za-z0-9_]*`，区分大小写。
@@ -188,13 +188,13 @@ fn safe_access(arr: [i32; 10], i: i32) !i32 {
     - 语法：`segment = TEXT | '${' expr [':' spec] '}'`
     - 格式说明符 `spec` 与 C printf 保持一致，[详见第 23 章](#23-字符串与格式化012)
     - 编译期展开为定长栈数组，零运行时解析开销，零堆分配
-    - 示例：`let msg: [i8; 64] = "hex=${x:#06x}, pi=${pi:.2f}\n";`
+    - 示例：`const msg: [i8; 64] = "hex=${x:#06x}, pi=${pi:.2f}\n";`
 - 数组字面量：
   - 列表式：`[expr1, expr2, ..., exprN]`（元素数量必须等于数组大小）
   - 重复式：`[value; N]`（value 重复 N 次，N 为编译期常量）
   - 数组字面量的所有元素类型必须完全一致
   - 元素类型必须与数组声明类型匹配（0.12 不支持类型推断）
-  - 示例：`let arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];`（元素类型 `f32` 必须与数组元素类型 `f32` 完全匹配）
+  - 示例：`const arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];`（元素类型 `f32` 必须与数组元素类型 `f32` 完全匹配）
 - 注释 `// 到行尾` 或 `/* 块 */`（可嵌套）。
 
 ---
@@ -352,21 +352,21 @@ fn safe_access(arr: [i32; 10], i: i32) !i32 {
 ## 3 变量与作用域
 
 ```uya
-let x: i32 = 10;        // 函数内局部变量，默认不可变
-let mut i: i32 = 0;     // 可变变量，可重新赋值
-let arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
-i = i + 1;              // 只有 mut 变量可赋值
+const x: i32 = 10;        // 函数内局部变量，不可变
+var i: i32 = 0;     // 可变变量，可重新赋值
+const arr: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
+i = i + 1;              // 只有 var 变量可赋值
 ```
 
 - 初始化表达式类型必须与声明完全一致。
-- `let` 声明的变量默认**不可变**；使用 `let mut` 声明可变变量。
+- `const` 声明的变量**不可变**；使用 `var` 声明可变变量。
 - 可变变量可重新赋值；不可变变量赋值会编译错误。
 - **常量变量**：使用 `const NAME: Type = value;` 声明编译期常量
   - 常量必须在编译期求值
   - 常量可在编译期常量表达式中使用（如数组大小 `[T; SIZE]`）
   - 常量不可重新赋值
   - `const` 常量可以在顶层或函数内声明
-  - `const` 常量可以作为数组大小：`const N: i32 = 10; let arr: [i32; N] = ...;`
+  - `const` 常量可以作为数组大小：`const N: i32 = 10; const arr: [i32; N] = ...;`
 - **编译期常量表达式**：
   - 字面量：整数、浮点、布尔、字符串
   - 常量变量：`const NAME`
@@ -393,7 +393,7 @@ struct Vec3 {
   z: f32
 }
 
-let v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
+const v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
 ```
 
 - 内存布局与 C 相同，字段顺序保留。
@@ -457,7 +457,7 @@ let v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
   - **零运行时开销**：切片操作在编译期验证安全，运行时直接访问内存，无额外开销
 - **字段可变性**：只有 `mut` 结构体变量才能修改其字段
   - `let s: S = ...` 时，`s.field = value` 会编译错误
-  - `let mut s: S = ...` 时，可以修改 `s.field`
+  - `var s: S = ...` 时，可以修改 `s.field`
   - 字段可变性由外层变量决定，不支持字段级 `mut`
   - **嵌套结构体示例**：
     ```uya
@@ -465,7 +465,7 @@ let v: Vec3 = Vec3{ x: 1.0, y: 2.0, z: 3.0 };
     struct Outer { inner: Inner }
     
     // ✅ 可以修改的情况
-    let mut outer: Outer = Outer{ inner: Inner{ x: 10 } };
+    var outer: Outer = Outer{ inner: Inner{ x: 10 } };
     outer.inner.x = 20;  // ✅ 可以修改，因为 outer 是 mut
     
     // ❌ 不能修改的情况
@@ -518,7 +518,7 @@ fn print_hello() void {
   - 如果 `expr` 返回错误，当前函数立即返回该错误
   - 如果 `expr` 返回值，继续执行
   - **只能在返回错误联合类型的函数中使用**，且 `expr` 必须是返回错误联合类型的表达式
-  - 示例：`let result: i32 = try divide(10, 2);`（`divide` 必须返回 `!i32`）
+  - 示例：`const result: i32 = try divide(10, 2);`（`divide` 必须返回 `!i32`）
 
 - **`catch` 语法**：
   - `expr catch |err| { statements }` 用于捕获并处理错误
@@ -641,7 +641,7 @@ extern f64 sin(f64);
 
 **步骤 2：正常调用**  
 ```uya
-let pi: f64 = 3.1415926;
+const pi: f64 = 3.1415926;
 printf("sin(pi/2)=%f\n", sin(pi / 2.0));
 ```
 
@@ -724,8 +724,8 @@ impl_block     = 'impl' struct_name ':' interface_name '{' method_impl { method_
    ```uya
    // ❌ 编译错误：s 的生命周期不足以支撑外部接口值
    fn example() void {
-       let s: Console = Console{ fd: 1 };
-       let mut external: IWriter = s;  // 如果 external 生命周期更长，编译错误
+       const s: Console = Console{ fd: 1 };
+       var external: IWriter = s;  // 如果 external 生命周期更长，编译错误
    }
    
    // ✅ 编译通过：局部装箱，生命周期匹配
@@ -1026,17 +1026,17 @@ fn iterate_example() void {
 ## 7 栈式数组（零 GC）
 
 ```uya
-let buf: [f32; 64] = [];   // 64 个 f32 在当前栈帧
+const buf: [f32; 64] = [];   // 64 个 f32 在当前栈帧
 ```
 
 - **栈数组语法**：使用 `[]` 表示未初始化的栈数组，类型由左侧变量的类型注解确定。
-- `[]` 不能独立使用，必须与类型注解一起使用：`let buf: [T; N] = [];`
+- `[]` 不能独立使用，必须与类型注解一起使用：`var buf: [T; N] = [];`
 - **数组初始化**：`[]` 返回的数组**未初始化**（包含未定义值），用户必须在使用前初始化数组元素
   - 初始化示例：
     ```uya
-    let mut buf: [f32; 64] = [];
+    var buf: [f32; 64] = [];
     // 手动初始化数组元素
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 64 {
         buf[i] = 0.0;  // 初始化每个元素
         i = i + 1;
@@ -1051,17 +1051,17 @@ let buf: [f32; 64] = [];   // 64 个 f32 在当前栈帧
 - **语法规则**：
   - `[]` 表示栈分配的未初始化数组
   - 数组大小由类型注解 `[T; N]` 中的 `N` 指定
-  - 示例：`let buf: [f32; 64] = [];` 表示分配 64 个 `f32` 的栈数组
+  - 示例：`var buf: [f32; 64] = [];` 表示分配 64 个 `f32` 的栈数组
 - **多维数组初始化**：
   - **未初始化多维数组**：使用嵌套的 `[]` 语法
     ```uya
     // 声明 3x4 的未初始化 i32 二维数组
-    let mut matrix: [[i32; 4]; 3] = [];
+    var matrix: [[i32; 4]; 3] = [];
     
     // 手动初始化每个元素
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 4 {
             matrix[i][j] = i * 4 + j;  // 需要边界检查证明
             j = j + 1;
@@ -1175,15 +1175,15 @@ break; continue; return expr;
       
       // 展开为
       {
-          let mut iter: IIteratorT = iterable;  // 自动装箱为接口（T为元素类型）
+          var iter: IIteratorT = iterable;  // 自动装箱为接口（T为元素类型）
           while true {
-              let result: void = iter.next() catch |err| {
+              const result: void = iter.next() catch |err| {
                   if err == error.IterEnd {
                       break;  // 迭代结束，跳出循环
                   }
                   return err;  // 其他错误传播（如果函数返回错误联合类型）
               };
-              let item: T = iter.value();  // 获取当前元素
+              const item: T = iter.value();  // 获取当前元素
               // body（可以使用item）
           }
       }
@@ -1197,9 +1197,9 @@ break; continue; return expr;
       
       // 展开为
       {
-          let mut iter: IIteratorTWithIndex = iterable;  // 自动装箱为带索引接口
+          var iter: IIteratorTWithIndex = iterable;  // 自动装箱为带索引接口
           while true {
-              let result: void = iter.next() catch |err| {
+              const result: void = iter.next() catch |err| {
                   if err == error.IterEnd {
                       break;
                   }
@@ -1680,13 +1680,13 @@ fn nested_example() !void {
 - **无 panic、无 catch、无断言**：所有检查在编译期完成
 - **优先级示例**：
   ```uya
-  let mut x: i32 = 1 + 2 * 3;        // = 7，不是 9（* 优先级高于 +）
-  let mut y: bool = true && false || true;  // = true（&& 优先级高于 ||）
-  let mut z: i32 = 0;
+  var x: i32 = 1 + 2 * 3;        // = 7，不是 9（* 优先级高于 +）
+  var y: bool = true && false || true;  // = true（&& 优先级高于 ||）
+  var z: i32 = 0;
   z = z + 1;                          // 先计算 z + 1，再赋值（= 优先级最低）
-  let mut a: i32 = 0b1010;
-  let mut b: i32 = a << 2 & 0xFF;    // = (a << 2) & 0xFF（<< 优先级高于 &）
-  let mut c: i32 = a & b | 0x10;     // = (a & b) | 0x10（& 优先级高于 |）
+  var a: i32 = 0b1010;
+  var b: i32 = a << 2 & 0xFF;    // = (a << 2) & 0xFF（<< 优先级高于 &）
+  var c: i32 = a & b | 0x10;     // = (a & b) | 0x10（& 优先级高于 |）
   ```
 
 ---
@@ -1706,24 +1706,24 @@ fn nested_example() !void {
 
 ```uya
 // ✅ 允许的转换（无精度损失）
-let x: f32 = 1.5;
-let y: f64 = x as f64;  // f32 -> f64，扩展精度，无损失
+const x: f32 = 1.5;
+const y: f64 = x as f64;  // f32 -> f64，扩展精度，无损失
 
-let i: i32 = 42;
-let f: f64 = i as f64;  // i32 -> f64，无损失
+const i: i32 = 42;
+const f: f64 = i as f64;  // i32 -> f64，无损失
 
-let small: i8 = 100;
-let f32_val: f32 = small as f32;  // i8 -> f32，小整数，无损失
+const small: i8 = 100;
+const f32_val: f32 = small as f32;  // i8 -> f32，小整数，无损失
 
 // ❌ 编译错误（可能有精度损失）
-let x: f64 = 3.141592653589793;
-let y: f32 = x as f32;  // 编译错误：f64 -> f32 可能有精度损失
+const x: f64 = 3.141592653589793;
+const y: f32 = x as f32;  // 编译错误：f64 -> f32 可能有精度损失
 
-let large: i32 = 100000000;
-let f: f32 = large as f32;  // 编译错误：i32 -> f32 可能损失精度
+const large: i32 = 100000000;
+const f: f32 = large as f32;  // 编译错误：i32 -> f32 可能损失精度
 
-let pi: f64 = 3.14;
-let n: i32 = pi as i32;  // 编译错误：f64 -> i32 截断转换
+const pi: f64 = 3.14;
+const n: i32 = pi as i32;  // 编译错误：f64 -> i32 截断转换
 ```
 
 ### 11.3 强转（as!）
@@ -1732,17 +1732,17 @@ let n: i32 = pi as i32;  // 编译错误：f64 -> i32 截断转换
 
 ```uya
 // ✅ 强转允许精度损失
-let x: f64 = 3.141592653589793;
-let y: f32 = x as! f32;  // 程序员明确知道可能有精度损失
+const x: f64 = 3.141592653589793;
+const y: f32 = x as! f32;  // 程序员明确知道可能有精度损失
 
-let large: i32 = 100000000;
-let f: f32 = large as! f32;  // i32 -> f32，使用强转
+const large: i32 = 100000000;
+const f: f32 = large as! f32;  // i32 -> f32，使用强转
 
-let pi: f64 = 3.14;
-let n: i32 = pi as! i32;  // f64 -> i32，截断为 3
+const pi: f64 = 3.14;
+const n: i32 = pi as! i32;  // f64 -> i32，截断为 3
 
-let i64_val: i64 = 9007199254740992;  // 超过 f64 精度范围
-let f: f64 = i64_val as! f64;  // i64 -> f64，可能损失精度
+const i64_val: i64 = 9007199254740992;  // 超过 f64 精度范围
+const f: f64 = i64_val as! f64;  // i64 -> f64，可能损失精度
 ```
 
 ### 11.4 转换规则表
@@ -1784,8 +1784,8 @@ const MAX_F64: f64 = MAX_I32 as f64;  // 编译期求值，安全转换
 
 ```uya
 // 源代码
-let x: f64 = 3.14;
-let y: f32 = x as f32;
+const x: f64 = 3.14;
+const y: f32 = x as f32;
 
 // 编译错误信息
 error: 类型转换可能有精度损失
@@ -1810,8 +1810,8 @@ error: 类型转换可能有精度损失
 
 ```uya
 // 源代码
-let x: f64 = 3.14;
-let y: f32 = x as! f32;
+const x: f64 = 3.14;
+const y: f32 = x as! f32;
 
 // x86-64 生成的代码（伪代码）
 //   movsd  xmm0, [x]      ; 加载 f64
@@ -2090,7 +2090,7 @@ fn increment(counter: *Counter) void {
 
 1. **常量折叠**（最简单）：
    - 编译期常量直接检查，溢出/越界立即报错
-   - 示例：`let x: i32 = 2147483647 + 1;` → 编译错误
+   - 示例：`const x: i32 = 2147483647 + 1;` → 编译错误
 
 2. **路径敏感分析**（中等复杂度）：
    - 编译器跟踪所有代码路径，分析变量状态
@@ -2116,11 +2116,11 @@ fn increment(counter: *Counter) void {
 
 ```uya
 // ✅ 编译通过：常量索引在范围内
-let arr: [i32; 10] = [0; 10];
-let x: i32 = arr[5];  // 5 < 10，编译期证明安全
+const arr: [i32; 10] = [0; 10];
+const x: i32 = arr[5];  // 5 < 10，编译期证明安全
 
 // ❌ 编译错误：常量索引越界
-let y: i32 = arr[10];  // 10 >= 10，编译错误
+const y: i32 = arr[10];  // 10 >= 10，编译错误
 
 // ✅ 编译通过：变量索引有证明
 fn safe_access(arr: [i32; 10], i: i32) i32 {
@@ -2141,15 +2141,15 @@ fn unsafe_access(arr: [i32; 10], i: i32) i32 {
 ```uya
 // ✅ 编译通过：常量运算，编译器可以证明无溢出
 // 使用 max/min 关键字访问极值（推荐，最优雅）
-let x: i32 = 100 + 200;  // 编译期常量折叠，证明无溢出（300 < max）
+const x: i32 = 100 + 200;  // 编译期常量折叠，证明无溢出（300 < max）
 
 // 也可以用于常量定义（类型推断）
 const MAX_I32: i32 = max;  // 从类型注解 i32 推断出是 i32 的最大值
 const MIN_I32: i32 = min;  // 从类型注解 i32 推断出是 i32 的最小值
 
 // ❌ 编译错误：常量溢出
-let y: i32 = 2147483647 + 1;  // 编译错误：常量溢出
-let z: i32 = -2147483648 - 1;  // 编译错误：常量下溢
+const y: i32 = 2147483647 + 1;  // 编译错误：常量溢出
+const z: i32 = -2147483648 - 1;  // 编译错误：常量下溢
 
 // ✅ 编译通过：变量运算有显式溢出检查
 
@@ -2274,11 +2274,11 @@ fn add_known_range(a: i32, b: i32) i32 {
 
 // ✅ 编译通过：i64 常量运算无溢出
 // 使用 max/min 关键字访问极值（推荐，最优雅）
-let x64: i64 = 1000000000 + 2000000000;  // 编译期常量折叠，证明无溢出
+const x64: i64 = 1000000000 + 2000000000;  // 编译期常量折叠，证明无溢出
 
 // ❌ 编译错误：i64 常量溢出
-let y64: i64 = max + 1;  // 编译错误：常量溢出（从类型注解 i64 推断）
-let z64: i64 = min - 1;  // 编译错误：常量下溢（从类型注解 i64 推断）
+const y64: i64 = max + 1;  // 编译错误：常量溢出（从类型注解 i64 推断）
+const z64: i64 = min - 1;  // 编译错误：常量下溢（从类型注解 i64 推断）
 
 // ✅ 编译通过：i64 变量运算有显式溢出检查
 // 使用标准库函数（推荐，最优雅）
@@ -2725,7 +2725,7 @@ struct Mat4 {
 extern i32 printf(byte* fmt, ...);
 
 fn print_mat(mat: Mat4) void {
-  let mut i: i32 = 0;
+  var i: i32 = 0;
   while i < 16 {
     printf("%f ", mat.m[i]);
     i = i + 1;
@@ -2734,7 +2734,7 @@ fn print_mat(mat: Mat4) void {
 }
 
 fn main() i32 {
-  let mut m: Mat4 = Mat4{ m: [0.0; 16] };
+  var m: Mat4 = Mat4{ m: [0.0; 16] };
   m.m[0]  = 1.0;
   m.m[5]  = 1.0;
   m.m[10] = 1.0;
@@ -2802,8 +2802,8 @@ fn read_file(path: byte*) !i32 {
         printf("Error occurred, cleaning up\n");
     }
     
-    let mut buf: [byte; 1024] = [];
-    let n: i32 = read(file.fd, buf, 1024);
+    var buf: [byte; 1024] = [];
+    const n: i32 = read(file.fd, buf, 1024);
     if n < 0 {
         return error.FileError;
     }
@@ -2951,15 +2951,15 @@ fn main() i32 {
     }
     
     // 示例3：计算数组元素之和
-    let mut sum: i32 = 0;
+    var sum: i32 = 0;
     for (iter(&arr)) |item| {
         sum = sum + item;
     }
     printf("\nSum of array elements: %d\n", sum);
     
     // 示例4：查找最大值及其索引
-    let mut max_val: i32 = 0;
-    let mut max_idx: i32 = 0;
+    var max_val: i32 = 0;
+    var max_idx: i32 = 0;
     for (iter(&arr), 0..) |item, index| {
         if index == 0 || item > max_val {
             max_val = item;
@@ -3117,9 +3117,9 @@ fn main() i32 {
     ];
     
     printf("Matrix (3x4):\n");
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 4 {
             printf("%d ", matrix[i][j]);  // 需要边界检查证明
             j = j + 1;
@@ -3129,11 +3129,11 @@ fn main() i32 {
     }
     
     // 示例2：未初始化的多维数组
-    let mut matrix2: [[f32; 4]; 3] = [];
+    var matrix2: [[f32; 4]; 3] = [];
     // 手动初始化
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 4 {
             let idx: i32 = i * 4 + j;
             matrix2[i][j] = (idx as f32) * 0.5;  // 需要边界检查证明
@@ -3143,9 +3143,9 @@ fn main() i32 {
     }
     
     printf("\nMatrix2 (3x4, float):\n");
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 4 {
             printf("%.1f ", matrix2[i][j]);
             j = j + 1;
@@ -3168,9 +3168,9 @@ fn main() i32 {
     };
     
     printf("\nIdentity Matrix (3x3):\n");
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 3 {
             printf("%.1f ", mat.data[i][j]);  // 访问结构体中的多维数组字段
             j = j + 1;
@@ -3180,12 +3180,12 @@ fn main() i32 {
     }
     
     // 示例4：三维数组
-    let mut cube: [[[i32; 3]; 3]; 3] = [];
-    let mut i: i32 = 0;
+    var cube: [[[i32; 3]; 3]; 3] = [];
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 3 {
-            let mut k: i32 = 0;
+            var k: i32 = 0;
             while k < 3 {
                 cube[i][j][k] = i * 9 + j * 3 + k;  // 需要边界检查证明
                 k = k + 1;
@@ -3198,11 +3198,11 @@ fn main() i32 {
     printf("\nCube[0][1][2] = %d\n", cube[0][1][2]);  // 应该输出 5
     
     // 示例5：使用重复式初始化
-    let zero_matrix: [[i32; 4]; 3] = [[0; 4]; 3];  // 3x4 的零矩阵
+    const zero_matrix: [[i32; 4]; 3] = [[0; 4]; 3];  // 3x4 的零矩阵
     printf("\nZero Matrix (3x4):\n");
-    let mut i: i32 = 0;
+    var i: i32 = 0;
     while i < 3 {
-        let mut j: i32 = 0;
+        var j: i32 = 0;
         while j < 4 {
             printf("%d ", zero_matrix[i][j]);
             j = j + 1;
@@ -3443,9 +3443,9 @@ impl Num : Add(i32) {   // 把 R 换成 i32
 ```uya
 fn id(x: T) T { return x; }
 
-let n: i32 = 42;
-let m: i32 = id(n);   // 第一次调用 → 生成 id_i32
-let p: f64 = id(3.14); // 第二次调用 → 生成 id_f64
+const n: i32 = 42;
+const m: i32 = id(n);   // 第一次调用 → 生成 id_i32
+const p: f64 = id(3.14); // 第二次调用 → 生成 id_f64
 ```
 后续再遇到 `id(i32)` 直接复用已生成代码，**无运行时派发**。
 
@@ -3512,10 +3512,10 @@ fn push(self: *Vec(T), item: T) void {   // T 自动成参
 }
 
 fn main() i32 {
-    let mut v1: Vec(i32) = create_i32_vec();
+    var v1: Vec(i32) = create_i32_vec();
     push(&v1, 42);   // T = i32，自动推断
     
-    let mut v2: Vec(f64) = create_f64_vec();
+    var v2: Vec(f64) = create_f64_vec();
     push(&v2, 3.14);   // T = f64，自动推断
     
     return 0;
@@ -3599,7 +3599,7 @@ fn main() i32 {
     let pos: Position = create_point();
     let result: FileResult = open_file();
     
-    let mut vec: IntVec = Vec(i32){ data: [0; 10], len: 0 };
+    var vec: IntVec = Vec(i32){ data: [0; 10], len: 0 };
     
     return 0;
 }
@@ -3782,13 +3782,13 @@ ptr1 - ptr2     // 指针间距离计算（返回usize）
 #### 27.3.3 指针算术示例
 ```uya
 // 安全的指针算术示例
-let arr: [i32; 10] = [0; 10];
-let ptr: &i32 = &arr[0];  // 指向数组首元素的指针
+const arr: [i32; 10] = [0; 10];
+const ptr: &i32 = &arr[0];  // 指向数组首元素的指针
 
 // 指针算术，编译器可以证明安全性
-let offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
+const offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
 if offset_ptr < &arr[10] {       // 边界检查
-    let val: i32 = *offset_ptr;   // 安全解引用
+    const val: i32 = *offset_ptr;   // 安全解引用
 }
 
 // 或者使用显式边界检查
@@ -3821,23 +3821,23 @@ fn safe_ptr_arith(arr: &[i32; 10], offset: usize) !&i32 {
 
 ```uya
 // 基本指针算术
-let arr: [i32; 10] = [0; 10];
-let mut ptr: &i32 = &arr[0];
+const arr: [i32; 10] = [0; 10];
+var ptr: &i32 = &arr[0];
 
 // 安全的指针算术
 for i: usize = 0; i < 10; i += 1 {
-    let val: i32 = *(ptr + i);  // 编译器证明 i < 10，安全
+    const val: i32 = *(ptr + i);  // 编译器证明 i < 10，安全
     printf("arr[%d] = %d\n", i, val);
 }
 
 // 指针比较
-let ptr1: &i32 = &arr[2];
-let ptr2: &i32 = &arr[5];
-let diff: usize = ptr2 - ptr1;  // 结果为 3
+const ptr1: &i32 = &arr[2];
+const ptr2: &i32 = &arr[5];
+const diff: usize = ptr2 - ptr1;  // 结果为 3
 
 // 边界检查的指针操作
 fn process_range(start: &i32, end: &i32) void {
-    let mut current: &i32 = start;
+    var current: &i32 = start;
     while current < end {
         printf("%d ", *current);
         current = current + 1;  // 编译器证明不会越界
@@ -3866,7 +3866,7 @@ fn process_range(start: &i32, end: &i32) void {
   - 依赖管理和包分发系统
   - 支持版本管理和依赖解析
 
-### 25.2 drop 机制增强（后续版本）
+### 28.2 drop 机制增强（后续版本）
 - **移动语义优化**：避免不必要的拷贝
   - 赋值、函数参数、返回值自动使用移动语义
   - 零开销的所有权转移，提高性能
@@ -3875,13 +3875,13 @@ fn process_range(start: &i32, end: &i32) void {
   - 标记纯数据类型，编译器跳过 drop 调用
   - 进一步优化性能，零运行时开销
 
-### 25.3 类型系统增强（后续版本）
+### 28.3 类型系统增强（后续版本）
 - **类型推断增强**：局部类型推断
   - 函数内支持类型推断，函数签名仍需显式类型
   - 提高代码简洁性，保持可读性
-  - 示例：`let x = 10;` 自动推断为 `i32`
+  - 示例：`const x = 10;` 自动推断为 `i32`（注意：0.12 不支持类型推断，需要显式类型注解）
 
-### 25.4 AI 友好性增强（后续版本）
+### 28.4 AI 友好性增强（后续版本）
 - **标准库文档字符串**：注释式或结构化文档
   - 帮助 AI 理解函数用途、参数、返回值
   - 提高代码生成准确性
@@ -3889,11 +3889,11 @@ fn process_range(start: &i32, end: &i32) void {
   - 类型错误、作用域错误、语法错误的详细说明
   - 提供修复建议，帮助 AI 和用户快速定位问题
 
-### 25.5 已实现特性（0.12 版本）
+### 28.5 已实现特性（0.12 版本）
 以下特性已在 0.12 版本中实现，详见对应章节：
-- ✅ **泛型**：第 25 章 - 优雅 0.12 泛型增量文档
-- ✅ **显式宏**：第 26 章 - 优雅 0.12 显式宏（可选增量）
-- ✅ **类型别名**：第 25 章 6.2 节 - 类型别名实现
+- ✅ **泛型**：第 24 章 - 优雅 0.12 泛型增量文档
+- ✅ **显式宏**：第 25 章 - 优雅 0.12 显式宏（可选增量）
+- ✅ **类型别名**：第 24 章 6.2 节 - 类型别名实现
 - ✅ **for 循环**：第 8 章 - Zig 风格的 for 循环迭代
 
 ---
@@ -3930,7 +3930,7 @@ fn process_range(start: &i32, end: &i32) void {
 
 ### 内存管理
 
-- **栈式数组**：使用 `let buf: [T; N] = [];` 在栈上分配数组，零 GC，生命周期由作用域决定。
+- **栈式数组**：使用 `var buf: [T; N] = [];` 在栈上分配数组，零 GC，生命周期由作用域决定。
 
 - **drop**：资源清理函数，在作用域结束时自动调用，实现 RAII 模式。
 

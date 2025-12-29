@@ -715,7 +715,7 @@
                     </div>
                     <h1>优雅语言</h1>
                 </div>
-                <div class="version">完整版 · 2025-12-28 · v0.12</div>
+                <div class="version">完整版 · 2025-12-29 · v0.12</div>
                 <p class="tagline">AI友好 · 默认 Rust 级安全 · 零 GC · 零 lifetime 符号 · 通过路径零指令 · 单页纸可读完</p>
                 
                 <div class="core-features">
@@ -837,9 +837,9 @@
                                 <span>字符串插值示例</span>
                                 <button class="code-copy">复制</button>
                             </div>
-                            <pre><code class="language-uya">let x: u32 = 255;
-let pi: f64 = 3.1415926;
-let msg: [i8; 64] = "hex=${x:#06x}, pi=${pi:.2f}\n";</code></pre>
+                            <pre><code class="language-uya">const x: u32 = 255;
+const pi: f64 = 3.1415926;
+const msg: [i8; 64] = "hex=${x:#06x}, pi=${pi:.2f}\n";</code></pre>
                         </div>
                     </div>
                 </section>
@@ -894,8 +894,8 @@ if i < arr.len() {
                             <button class="code-copy">复制</button>
                         </div>
                         <pre><code class="language-uya">// 优雅：程序员提供证明，编译器验证证明
-let arr: [i32; 10] = [0; 10];
-let i: i32 = get_index();
+const arr: [i32; 10] = [0; 10];
+const i: i32 = get_index();
 if i < 0 || i >= 10 {
     return error.OutOfBounds;  // 显式检查，返回预定义错误（可选）
 }
@@ -903,7 +903,7 @@ if i < 0 || i >= 10 {
 if i < 0 || i >= 10 {
     return error.IndexOutOfBounds;  // 运行时错误，无需预定义
 }
-let x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全</code></pre>
+const x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全</code></pre>
                     </div>
                     
                     <h3>责任转移的哲学</h3>
@@ -972,9 +972,9 @@ let x: i32 = arr[i];  // 编译器证明 i >= 0 && i < 10，安全</code></pre>
                             <button class="code-copy">复制</button>
                         </div>
                         <pre><code class="language-uya">// 类型清晰，无隐式转换
-let x: i32 = 10;        // 明确类型
-let y: f64 = 3.14;      // 明确类型
-let z: i32 = x + 5;     // 类型必须匹配
+const x: i32 = 10;        // 明确类型
+const y: f64 = 3.14;      // 明确类型
+const z: i32 = x + 5;     // 类型必须匹配
 
 // 错误处理明确（支持预定义和运行时错误）
 fn divide(a: i32, b: i32) !i32 {
@@ -1118,8 +1118,8 @@ const MAX: i32 = max;  // 2147483647（从类型注解 i32 推断）
 const MIN: i32 = min;  // -2147483648（从类型注解 i32 推断）
 
 // 在溢出检查中使用（从变量类型推断）
-let a: i32 = ...;
-let b: i32 = ...;
+const a: i32 = ...;
+const b: i32 = ...;
 if a > 0 && b > 0 && a > max - b {  // 从 a 和 b 的类型 i32 推断
     return error.Overflow;  // 运行时错误，无需预定义
 }</code></pre>
@@ -1143,7 +1143,7 @@ if a > 0 && b > 0 && a > max - b {  // 从 a 和 b 的类型 i32 推断
 extern i32 printf(byte* fmt, ...);
 
 fn print_mat(mat: Mat4) void {
-  let mut i: i32 = 0;
+  var i: i32 = 0;
   while i < 16 {
     printf("%f ", mat.m[i]);
     i = i + 1;
@@ -1152,7 +1152,7 @@ fn print_mat(mat: Mat4) void {
 }
 
 fn main() i32 {
-  let mut m: Mat4 = Mat4{ m: [0.0; 16] };
+  var m: Mat4 = Mat4{ m: [0.0; 16] };
   m.m[0]  = 1.0;
   m.m[5]  = 1.0;
   m.m[10] = 1.0;
@@ -1181,7 +1181,7 @@ struct File {
 }
 
 fn open_file(path: byte*) !File {
-    let fd: i32 = open(path, 0);
+    const fd: i32 = open(path, 0);
     if fd < 0 {
         return error.FileError;      // 预定义错误
     }
@@ -1199,7 +1199,7 @@ fn drop(self: File) void {
 }
 
 fn read_file(path: byte*) !i32 {
-    let file: File = try open_file(path);
+    const file: File = try open_file(path);
     defer {
         printf("File operation completed\n");
     }
@@ -1207,8 +1207,8 @@ fn read_file(path: byte*) !i32 {
         printf("Error occurred, cleaning up\n");
     }
 
-    let mut buf: [byte; 1024] = [];
-    let n: i32 = read(file.fd, &buf[0], 1024);
+    var buf: [byte; 1024] = [];
+    const n: i32 = read(file.fd, &buf[0], 1024);
     if n < 0 {
         return error.FileError;      // 预定义错误
     }
@@ -1243,7 +1243,7 @@ impl Counter : IIncrement {
 }
 
 fn main() i32 {
-  let counter: Counter = Counter{ value: 0 };
+  const counter: Counter = Counter{ value: 0 };
   // 多线程并发递增，零数据竞争
   // 所有操作自动原子化，无需锁
   return 0;
@@ -1259,7 +1259,7 @@ fn main() i32 {
                         <pre><code class="language-uya">extern i32 printf(byte* fmt, ...);
 
 fn main() i32 {
-    let arr: [i32; 5] = [10, 20, 30, 40, 50];
+    const arr: [i32; 5] = [10, 20, 30, 40, 50];
     
     // 基本迭代（只获取元素值）
     printf("Basic iteration:\n");
@@ -1286,11 +1286,11 @@ fn main() i32 {
                         <pre><code class="language-uya">extern i32 printf(byte* fmt, ...);
 
 fn main() i32 {
-    let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     // 基本切片语法
     // slice(arr, 2, 3) 表示从索引2开始，长度为3
-    let slice1: [i32; 3] = slice(arr, 2, 3);  // [2, 3, 4]
+    const slice1: [i32; 3] = slice(arr, 2, 3);  // [2, 3, 4]
     printf("slice(arr, 2, 3): ");
     for (iter(&slice1)) |item| {
         printf("%d ", item);
@@ -1300,7 +1300,7 @@ fn main() i32 {
     // 使用负数索引的切片（start 支持负数索引）
     // slice(arr, -3, 3) 表示从倒数第3个元素开始，长度为3
     // 对于长度为10的数组，-3 转换为索引 7，所以从索引7开始，长度为3
-    let slice2: [i32; 3] = slice(arr, -3, 3);  // [7, 8, 9]
+    const slice2: [i32; 3] = slice(arr, -3, 3);  // [7, 8, 9]
     printf("slice(arr, -3, 3): ");
     for (iter(&slice2)) |item| {
         printf("%d ", item);
@@ -1309,12 +1309,12 @@ fn main() i32 {
 
     // 更多负数索引示例
     // slice(arr, -1, 1) 表示从最后一个元素开始，长度为1
-    let slice2b: [i32; 1] = slice(arr, -1, 1);  // [9]
+    const slice2b: [i32; 1] = slice(arr, -1, 1);  // [9]
     printf("slice(arr, -1, 1): %d\n", slice2b[0]);
 
     // 从某个索引开始
     // slice(arr, 7, 3) 表示从索引7开始，长度为3
-    let slice3: [i32; 3] = slice(arr, 7, 3);  // [7, 8, 9]
+    const slice3: [i32; 3] = slice(arr, 7, 3);  // [7, 8, 9]
     printf("slice(arr, 7, 3): ");
     for (iter(&slice3)) |item| {
         printf("%d ", item);
@@ -1323,7 +1323,7 @@ fn main() i32 {
 
     // 从开头开始
     // slice(arr, 0, 3) 表示从索引0开始，长度为3
-    let slice4: [i32; 3] = slice(arr, 0, 3);  // [0, 1, 2]
+    const slice4: [i32; 3] = slice(arr, 0, 3);  // [0, 1, 2]
     printf("slice(arr, 0, 3): ");
     for (iter(&slice4)) |item| {
         printf("%d ", item);
@@ -1332,7 +1332,7 @@ fn main() i32 {
 
     // 从开头到倒数第1个元素
     // slice(arr, 0, 9) 表示从索引0开始，长度为9（不包含最后一个）
-    let slice5: [i32; 9] = slice(arr, 0, 9);  // [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    const slice5: [i32; 9] = slice(arr, 0, 9);  // [0, 1, 2, 3, 4, 5, 6, 7, 8]
     printf("slice(arr, 0, 9): ");
     for (iter(&slice5)) |item| {
         printf("%d ", item);
@@ -1352,34 +1352,34 @@ fn main() i32 {
                         <pre><code class="language-uya">extern i32 printf(byte* fmt, ...);
 
 fn main() i32 {
-    let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let mut ptr: &i32 = &arr[0];  // 指向数组首元素的指针
+    const arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var ptr: &i32 = &arr[0];  // 指向数组首元素的指针
 
     // 基本指针算术
     // 指针向后偏移
-    let offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
+    const offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
     printf("Value at ptr + 5: %d\n", *offset_ptr);  // 输出 5
 
     // 指针算术与边界检查
     if offset_ptr < &arr[10] {       // 边界检查
-        let val: i32 = *offset_ptr;   // 安全解引用
+        const val: i32 = *offset_ptr;   // 安全解引用
         printf("Value: %d\n", val);
     }
 
     // 循环中的指针算术
     for i: i32 = 0; i < 10; i += 1 {
-        let current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
+        const current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
         printf("arr[%d] = %d\n", i, *current_ptr);
     }
 
     // 指针间距离计算
-    let ptr1: &i32 = &arr[2];
-    let ptr2: &i32 = &arr[7];
-    let diff: i32 = (ptr2 as i32) - (ptr1 as i32);  // 计算指针间距离
+    const ptr1: &i32 = &arr[2];
+    const ptr2: &i32 = &arr[7];
+    const diff: i32 = (ptr2 as i32) - (ptr1 as i32);  // 计算指针间距离
     printf("Distance between ptr2 and ptr1: %d\n", diff);
 
     // 安全的指针算术函数
-    let result: &i32 = safe_ptr_arith(arr, 3) catch |err| {
+    const result: &i32 = safe_ptr_arith(arr, 3) catch |err| {
         if err == error.OutOfBounds {
             printf("Index out of bounds\n");
         }
@@ -1514,7 +1514,7 @@ fn safe_ptr_arith(arr: [i32; 10], offset: i32) !&i32 {
             </div>
             
             <div class="copyright">
-                <p>优雅语言规范 0.12（完整版 · 2025-12-28 · 支持Zig风格错误处理）</p>
+                <p>优雅语言规范 0.12（完整版 · 2025-12-29 · 支持Zig风格错误处理）</p>
                 <p>© 2025 优雅语言项目团队。保留所有权利。</p>
             </div>
         </div>
@@ -1526,7 +1526,7 @@ fn safe_ptr_arith(arr: [i32; 10], offset: i32) !&i32 {
     <script>
         // 添加自定义Uya语言高亮
         Prism.languages.uya = Prism.languages.extend('c', {
-            'keyword': /\b(struct|let|mut|const|fn|return|extern|true|false|if|while|break|continue|defer|errdefer|try|catch|error|null|interface|impl|atomic|max|min|as|as!|type|mc)\b/,
+            'keyword': /\b(struct|const|var|fn|return|extern|true|false|if|while|break|continue|defer|errdefer|try|catch|error|null|interface|impl|atomic|max|min|as|as!|type|mc)\b/,
             'operator': /=>|\.\.|\+=|\-=|\*=|\/=|%=|&=|\|=|\^=|<<=|>>=|&&|\|\||<<|>>|<=|>=|==|!=|\.\.\.?/,
             'builtin': /\b(i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|bool|byte|void|Self)\b/,
             'error': /\berror\.[A-Z][A-Za-z0-9]*\b/,  // 高亮错误类型，如 error.FileNotFound

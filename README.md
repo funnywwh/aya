@@ -93,38 +93,38 @@ mc twice(n: i32) expr { n + n }
 
 // 数组切片操作（类似Python语法）
 fn slice_example() void {
-  let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   // 基本切片：slice(arr, start, len) 返回从索引start开始，长度为len的元素
-  let slice1: [i32; 3] = slice(arr, 2, 3);  // [2, 3, 4]
+  const slice1: [i32; 3] = slice(arr, 2, 3);  // [2, 3, 4]
 
   // start 支持负数索引：-1表示最后一个元素，-2表示倒数第二个元素，以此类推
   // 负数索引从数组末尾开始计算：-n 转换为 len(arr) - n
-  let slice2: [i32; 3] = slice(arr, -3, 3);  // [7, 8, 9]，从倒数第3个开始，长度为3
-  let slice2b: [i32; 1] = slice(arr, -1, 1);  // [9]，从最后一个元素开始，长度为1
+  const slice2: [i32; 3] = slice(arr, -3, 3);  // [7, 8, 9]，从倒数第3个开始，长度为3
+  const slice2b: [i32; 1] = slice(arr, -1, 1);  // [9]，从最后一个元素开始，长度为1
 
   // 从某个索引开始
-  let slice3: [i32; 3] = slice(arr, 7, 3);   // [7, 8, 9]
+  const slice3: [i32; 3] = slice(arr, 7, 3);   // [7, 8, 9]
 
   // 从开头开始
-  let slice4: [i32; 3] = slice(arr, 0, 3);    // [0, 1, 2]
+  const slice4: [i32; 3] = slice(arr, 0, 3);    // [0, 1, 2]
 }
 
 // 安全指针算术操作
 fn pointer_arith_example() void {
-  let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  let ptr: &i32 = &arr[0];  // 指向数组首元素的指针
+  const arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const ptr: &i32 = &arr[0];  // 指向数组首元素的指针
 
   // 指针算术：ptr + offset，编译器验证边界安全
-  let offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
+  const offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
   if offset_ptr < &arr[10] {       // 边界检查
-    let val: i32 = *offset_ptr;    // 安全解引用
+    const val: i32 = *offset_ptr;    // 安全解引用
     printf("Value at offset 5: %d\n", val);
   }
 
   // 循环中的指针算术
   for i: i32 = 0; i < 10; i += 1 {
-    let current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
+    const current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
     printf("arr[%d] = %d\n", i, *current_ptr);
   }
 }
@@ -133,10 +133,10 @@ fn main() i32 {
   printf("Hello, Uya!\n");
 
   // 使用泛型
-  let x: i32 = id(42);
+  const x: i32 = id(42);
 
   // 使用宏
-  let y: i32 = twice(5);  // 编译期展开为 5 + 5
+  const y: i32 = twice(5);  // 编译期展开为 5 + 5
 
   // 使用切片
   slice_example();
@@ -228,7 +228,7 @@ struct Counter {
 
 fn increment(counter: *Counter) void {
   counter.value += 1;  // 自动原子 fetch_add
-  let v: i32 = counter.value;  // 自动原子 load
+  const v: i32 = counter.value;  // 自动原子 load
   counter.value = 10;  // 自动原子 store
 }
 ```
