@@ -19,6 +19,7 @@
 - **字符串插值**：支持 `"a${x}"` 和 `"pi=${pi:.2f}"` 两种形式
 - **灵活错误处理**：支持预定义错误和运行时错误（类似 Zig 语法，无需预定义）
 - **切片语法**：支持类似 Python 的切片语法 `slice(arr, start, end)`，包括负数索引
+- **安全指针算术**：支持 `ptr +/- offset` 操作，必须通过编译期证明安全
 
 ### 设计亮点
 
@@ -33,6 +34,7 @@
 - ✅ **泛型支持**：零新关键字，向后 100% 兼容
 - ✅ **显式宏**：使用 `mc` 区分宏与函数，零歧义
 - ✅ **切片操作**：支持类似 Python 的切片语法，包括负数索引
+- ✅ **安全指针算术**：支持指针算术操作，通过编译期证明保证安全
 
 ## 快速开始
 
@@ -106,6 +108,25 @@ fn slice_example() void {
   let slice4: [i32; 3] = slice(arr, 0, 3);    // [0, 1, 2]
 }
 
+// 安全指针算术操作
+fn pointer_arith_example() void {
+  let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  let ptr: &i32 = &arr[0];  // 指向数组首元素的指针
+
+  // 指针算术：ptr + offset，编译器验证边界安全
+  let offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
+  if offset_ptr < &arr[10] {       // 边界检查
+    let val: i32 = *offset_ptr;    // 安全解引用
+    printf("Value at offset 5: %d\n", val);
+  }
+
+  // 循环中的指针算术
+  for i: i32 = 0; i < 10; i += 1 {
+    let current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
+    printf("arr[%d] = %d\n", i, *current_ptr);
+  }
+}
+
 fn main() i32 {
   printf("Hello, Uya!\n");
 
@@ -117,6 +138,9 @@ fn main() i32 {
 
   // 使用切片
   slice_example();
+
+  // 使用指针算术
+  pointer_arith_example();
 
   return 0;
 }
@@ -232,7 +256,7 @@ Copyright (c) 2025 zigger
 
 ## 一句话总结
 
-> **优雅 0.12 = 默认即 Rust 级内存安全 + 并发安全 + Zig 风格错误处理 + Python 风格切片**；
+> **优雅 0.12 = 默认即 Rust 级内存安全 + 并发安全 + Zig 风格错误处理 + Python 风格切片 + 安全指针算术**；
 > **只加 1 个关键字 `atomic T`，其余零新符号**；
 > **所有 UB 必须被编译期证明为安全 → 失败即编译错误**；
 > **通过路径零指令，失败路径不存在，不降级、不插运行时锁。**
@@ -243,6 +267,7 @@ Copyright (c) 2025 zigger
 
 ### 新增功能
 - **切片语法**：支持类似 Python 的切片操作 `slice(arr, start, end)`，包括负数索引支持
+- **安全指针算术**：支持 `ptr +/- offset` 操作，通过编译期证明保证内存安全
 
 ## 相关链接
 

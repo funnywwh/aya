@@ -1336,6 +1336,62 @@ fn main() i32 {
     return 0;
 }</code></pre>
                     </div>
+
+                    <h3>安全指针算术</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>示例：指针算术操作</span>
+                            <button class="code-copy">复制</button>
+                        </div>
+                        <pre><code class="language-uya">extern i32 printf(byte* fmt, ...);
+
+fn main() i32 {
+    let arr: [i32; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let mut ptr: &i32 = &arr[0];  // 指向数组首元素的指针
+
+    // 基本指针算术
+    // 指针向后偏移
+    let offset_ptr: &i32 = ptr + 5;  // 指向第6个元素
+    printf("Value at ptr + 5: %d\n", *offset_ptr);  // 输出 5
+
+    // 指针算术与边界检查
+    if offset_ptr < &arr[10] {       // 边界检查
+        let val: i32 = *offset_ptr;   // 安全解引用
+        printf("Value: %d\n", val);
+    }
+
+    // 循环中的指针算术
+    for i: i32 = 0; i < 10; i += 1 {
+        let current_ptr: &i32 = ptr + i;  // 编译器证明 i < 10，安全
+        printf("arr[%d] = %d\n", i, *current_ptr);
+    }
+
+    // 指针间距离计算
+    let ptr1: &i32 = &arr[2];
+    let ptr2: &i32 = &arr[7];
+    let diff: i32 = (ptr2 as i32) - (ptr1 as i32);  // 计算指针间距离
+    printf("Distance between ptr2 and ptr1: %d\n", diff);
+
+    // 安全的指针算术函数
+    let result: &i32 = safe_ptr_arith(arr, 3) catch |err| {
+        if err == error.OutOfBounds {
+            printf("Index out of bounds\n");
+        }
+        return 1;
+    };
+    printf("Value at safe index: %d\n", *result);
+
+    return 0;
+}
+
+// 安全的指针算术函数
+fn safe_ptr_arith(arr: [i32; 10], offset: i32) !&i32 {
+    if offset < 0 || offset >= 10 {
+        return error.OutOfBounds;
+    }
+    return &arr[0] + offset;  // 编译器证明 offset < 10，安全
+}</code></pre>
+                    </div>
                 </section>
 
                 <!-- 标准库部分 -->
