@@ -33,6 +33,7 @@ typedef enum {
     IR_CAST,           // 类型转换
     IR_ERROR_UNION,    // 错误联合类型操作
     IR_TRY_CATCH,      // try/catch
+    IR_SLICE,          // 数组切片操作
 } IRInstType;
 
 // 数据类型
@@ -190,6 +191,14 @@ typedef struct IRInst {
             char *error_var;  // 错误变量名
             struct IRInst *catch_body;
         } try_catch;
+
+        // 数组切片操作
+        struct {
+            char *dest;      // 目标切片变量
+            struct IRInst *source;  // 源数组
+            struct IRInst *start;   // 起始索引
+            struct IRInst *end;     // 结束索引
+        } slice_op;
     } data;
 } IRInst;
 
